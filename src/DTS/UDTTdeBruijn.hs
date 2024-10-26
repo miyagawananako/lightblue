@@ -698,6 +698,8 @@ instance Typeset (Judgment a) where
 instance MathML (Judgment a) where
   toMathML = toMathML . fromDeBruijnJudgment
 
+instance Store Judgment
+
 fromDeBruijnSignature :: Signature -> VN.Signature
 fromDeBruijnSignature = map (\(cname, ty) -> (cname, fromDeBruijn ty))
 
