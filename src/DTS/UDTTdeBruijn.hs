@@ -687,7 +687,7 @@ data Judgment a = Judgment {
   , context :: Context     -- ^ A context \Gamma in \Gamma \vdash M:A
   , term :: Preterm a      -- ^ A term M in \Gamma \vdash M:A
   , typ :: Preterm DTT     -- ^ A type A in \Gamma \vdash M:A
-  } deriving (Eq, Show, Generic)
+  } deriving (Eq, Show, G.Generic)
 
 instance SimpleText (Judgment a) where
   toText = toText . fromDeBruijnJudgment
