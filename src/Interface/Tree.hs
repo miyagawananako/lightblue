@@ -18,7 +18,7 @@ data Tree r a = Tree {
   ruleName :: r
   , node :: a
   , daughters :: [Tree r a]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show) -- Genericにする？
 
 instance Bifunctor Tree where
   first f (Tree rn n dtrs) = Tree (f rn) n (map (first f) dtrs)

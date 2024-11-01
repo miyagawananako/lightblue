@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances, DeriveGeneric #-}
+{-# LANGUAGE GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances, DeriveGeneric, LambdaCase, TypeFamilies, UndecidableInstances #-}
 
 {-|
 Copyright   : (c) Daisuke Bekki, 2023
@@ -48,6 +48,9 @@ import qualified Control.Applicative as M --base
 import qualified Control.Monad as M       --base
 import qualified Data.List as L           --base
 import qualified Data.Text.Lazy as T --text
+import Data.Store (Store(..), Size(..), Peek)
+import Data.Store.TH
+import Data.Word (Word8)  -- タグ用にWord8をインポート
 import qualified Codec.Serialise as S --serialise
 import Interface.Text                --lightblue
 import Interface.TeX                 --lightblue
@@ -56,7 +59,18 @@ import DTS.Labels (UDTT,DTT)         --lightblue
 import qualified DTS.UDTTvarName as VN         --lightblue
 
 -- | 'Proj' 'Fst' m is the first projection of m, while 'Proj' 'Snd' m is the second projection of m.
-data Selector = Fst | Snd deriving (Eq, Show)
+data Selector = Fst | Snd deriving (Eq, Show, G.Generic)
+
+instance Store Selector where
+    size = ConstSize 1
+    poke Fst = poke (1 :: Word8)
+    poke Snd = poke (2 :: Word8)
+    peek = do
+        tag <- peek :: Peek Word8
+        case tag of
+            1 -> return Fst
+            2 -> return Snd
+            _ -> fail "Invalid Selector tag"
 
 -- | Print a selector as "1" or "2".
 instance SimpleText Selector where
@@ -67,6 +81,11 @@ instance Typeset Selector where
 instance MathML Selector where
   toMathML Fst = "<mn>1</mn>"  -- `Proj` `Fst` m is the first projection of m
   toMathML Snd = "<mn>2</mn>" -- `Proj` `Snd` m is the second projection of m
+
+instance Store T.Text where
+    size = VarSize $ \txt -> fromIntegral (T.length txt)
+    poke = poke . T.unpack
+    peek = T.pack <$> peek
 
 -- | Preterms of Underspecified Dependent Type Theory (UDTT).
 data Preterm a where
@@ -109,8 +128,109 @@ data Preterm a where
   -- | ToDo: add Disjoint Union Types
   -- | ToDo: add First Universe
 
+-- -- First, create a non-GADT version of Preterm for Generic derivation
+-- data Preterm' a
+--   = Var' Int
+--   | Con' T.Text
+--   | Type'
+--   | Kind'
+--   | Pi' (Preterm' a) (Preterm' a)
+--   | Lam' (Preterm' a)
+--   | App' (Preterm' a) (Preterm' a)
+--   | Not' (Preterm' a)
+  -- | Sigma' (Preterm' a) (Preterm' a)
+  -- | Pair' (Preterm' a) (Preterm' a)
+  -- | Proj' Selector (Preterm' a)
+  -- | Asp' Int (Preterm' UDTT)
+  -- | Lamvec' (Preterm' UDTT)
+  -- | Appvec' Int (Preterm' UDTT)
+  -- | Disj' (Preterm' a) (Preterm' a)
+  -- | Iota' Selector (Preterm' a)
+  -- | Unpack' (Preterm' a) (Preterm' a) (Preterm' a) (Preterm' a)
+  -- | Bot'
+  -- | Unit'
+  -- | Top'
+  -- | Entity'
+  -- | Nat'
+  -- | Zero'
+  -- | Succ' (Preterm' a)
+  -- | Natrec' (Preterm' a) (Preterm' a) (Preterm' a)
+  -- | Eq' (Preterm' a) (Preterm' a) (Preterm' a)
+  -- | Refl' (Preterm' a) (Preterm' a)
+  -- | Idpeel' (Preterm' a) (Preterm' a)
+  -- deriving G.Generic
+
+-- -- Define conversion functions
+-- toPretterm' :: Preterm a -> Preterm' a
+-- toPretterm' = \case
+--   Var n -> Var' n
+--   Con t -> Con' t
+--   Type -> Type'
+--   Kind -> Kind'
+--   Pi a b -> Pi' (toPretterm' a) (toPretterm' b)
+--   Lam a -> Lam' (toPretterm' a)
+--   App a b -> App' (toPretterm' a) (toPretterm' b)
+--   Not a -> Not' (toPretterm' a)
+--   Sigma a b -> Sigma' (toPretterm' a) (toPretterm' b)
+--   Pair a b -> Pair' (toPretterm' a) (toPretterm' b)
+--   Proj s a -> Proj' s (toPretterm' a)
+--   Asp n a -> Asp' n (toPretterm' a)
+--   Lamvec a -> Lamvec' (toPretterm' a)
+--   Appvec n a -> Appvec' n (toPretterm' a)
+--   Disj a b -> Disj' (toPretterm' a) (toPretterm' b)
+--   Iota s a -> Iota' s (toPretterm' a)
+--   Unpack p l m n -> Unpack' (toPretterm' p) (toPretterm' l) (toPretterm' m) (toPretterm' n)
+--   Bot -> Bot'
+--   Unit -> Unit'
+--   Top -> Top'
+--   Entity -> Entity'
+--   Nat -> Nat'
+--   Zero -> Zero'
+--   Succ n -> Succ' (toPretterm' n)
+--   Natrec a b c -> Natrec' (toPretterm' a) (toPretterm' b) (toPretterm' c)
+--   Eq a b c -> Eq' (toPretterm' a) (toPretterm' b) (toPretterm' c)
+--   Refl a b -> Refl' (toPretterm' a) (toPretterm' b)
+--   Idpeel a b -> Idpeel' (toPretterm' a) (toPretterm' b)
+
+-- fromPreterm' :: Preterm' UDTT -> Preterm UDTT
+-- fromPreterm' = \case
+--   Var' n -> Var n
+--   Con' t -> Con t
+--   Type' -> Type
+--   Kind' -> Kind
+--   Pi' a b -> Pi (fromPreterm' a) (fromPreterm' b)
+--   Lam' a -> Lam (fromPreterm' a)
+--   App' a b -> App (fromPreterm' a) (fromPreterm' b)
+--   Not' a -> Not (fromPreterm' a)
+--   Sigma' a b -> Sigma (fromPreterm' a) (fromPreterm' b)
+--   Pair' a b -> Pair (fromPreterm' a) (fromPreterm' b)
+--   Proj' s a -> Proj s (fromPreterm' a)
+--   Asp' n a -> Asp n (fromPreterm' a)
+--   Lamvec' a -> Lamvec (fromPreterm' a)
+--   Appvec' n a -> Appvec n (fromPreterm' a)
+--   Disj' a b -> Disj (fromPreterm' a) (fromPreterm' b)
+--   Iota' s a -> Iota s (fromPreterm' a)
+--   Unpack' p l m n -> Unpack (fromPreterm' p) (fromPreterm' l) (fromPreterm' m) (fromPreterm' n)
+--   Bot' -> Bot
+--   Unit' -> Unit
+--   Top' -> Top
+--   Entity' -> Entity
+--   Nat' -> Nat
+--   Zero' -> Zero
+--   Succ' n -> Succ (fromPreterm' n)
+--   Natrec' a b c -> Natrec (fromPreterm' a) (fromPreterm' b) (fromPreterm' c)
+--   Eq' a b c -> Eq (fromPreterm' a) (fromPreterm' b) (fromPreterm' c)
+--   Refl' a b -> Refl (fromPreterm' a) (fromPreterm' b)
+--   Idpeel' a b -> Idpeel (fromPreterm' a) (fromPreterm' b)
+
+-- -- Now implement Generic for Preterm using the non-GADT version
+-- instance G.Generic (Preterm a) where
+--   type Rep (Preterm a) = G.Rep (Preterm' a)
+--   from = from . toPretterm'
+--   to = fromPreterm' . to
+
 deriving instance Eq a => Eq (Preterm a)
---deriving instance G.Generic a => G.Generic (Preterm a)
+-- deriving instance G.Generic a => G.Generic (Preterm a)
 --deriving instance S.Serialise a => S.Serialise (Preterm a)
 
 instance Show (Preterm a) where
@@ -130,6 +250,11 @@ instance Typeset (Preterm a) where
 -- | translates a DTS preterm into a MathML notation.
 instance MathML (Preterm a) where
   toMathML = toMathML . fromDeBruijn
+
+-- instance Store (Preterm a) where
+--   -- size = genericSize
+--   -- poke = genericPoke
+--   -- peek = genericPeek
 
 -- | prints a preterm in text, in the De Bruijn style.
 toTextDeBruijn :: Preterm t -> T.Text
@@ -698,7 +823,104 @@ instance Typeset (Judgment a) where
 instance MathML (Judgment a) where
   toMathML = toMathML . fromDeBruijnJudgment
 
-instance Store Judgment
+-- 以下みたいな表記にしたい
+-- instance Store RNNGSentence
+-- instance A.FromJSON RNNGSentence
+-- instance A.ToJSON RNNGSentence
+
+instance Store (Preterm a) where
+  -- `size`関数は`Preterm`のサイズを取得するために利用します
+  size = VarSize $ \case
+    Var _     -> 1 + (undefined :: Int)
+    Con txt   -> 1 + (undefined :: Int) + fromIntegral (T.length txt)
+    Type      -> 1
+    Kind      -> 1
+    Pi t1 t2  -> 1
+    Lam t     -> 1
+    App t1 t2 -> 1
+    Not t     -> 1
+    Sigma t1 t2 -> 1
+    Pair t1 t2 -> 1
+    Proj _ t  -> 1
+    Disj t1 t2 -> 1
+    Iota _ t  -> 1
+    Unpack t1 t2 t3 t4 -> 1
+    Bot       -> 1
+    Unit      -> 1
+    Top       -> 1
+    Entity    -> 1
+    Nat       -> 1
+    Zero      -> 1
+    Succ t    -> 1
+    Natrec t1 t2 t3 -> 1
+    Eq t1 t2 t3 -> 1
+    Refl t1 t2 -> 1
+    Idpeel t1 t2 -> 1
+
+  -- `peek`関数はバイナリデータを`Preterm`に変換します
+  peek = do
+    tag <- peek :: Peek Word8  -- タグとして1バイトを読み取ります
+    case tag of
+      0  -> Var <$> peek
+      1  -> Con <$> peek
+      2  -> return Type
+      3  -> return Kind
+      4  -> Pi <$> peek <*> peek
+      5  -> Lam <$> peek
+      6  -> App <$> peek <*> peek
+      7  -> Not <$> peek
+      8  -> Sigma <$> peek <*> peek
+      9  -> Pair <$> peek <*> peek
+      10 -> Proj <$> peek <*> peek
+      11 -> Disj <$> peek <*> peek
+      12 -> Iota <$> peek <*> peek
+      13 -> Unpack <$> peek <*> peek <*> peek <*> peek
+      14 -> return Bot
+      15 -> return Unit
+      16 -> return Top
+      17 -> return Entity
+      18 -> return Nat
+      19 -> return Zero
+      20 -> Succ <$> peek
+      21 -> Natrec <$> peek <*> peek <*> peek
+      22 -> Eq <$> peek <*> peek <*> peek
+      23 -> Refl <$> peek <*> peek
+      24 -> Idpeel <$> peek <*> peek
+      25 -> Asp <$> peek <*> peek      -- Aspを追加
+      26 -> Lamvec <$> peek            -- Lamvecを追加
+      27 -> Appvec <$> peek <*> peek   -- Appvecを追加
+      _  -> fail "Unexpected tag for Preterm"
+
+  -- `poke`関数は`Preterm`をバイナリデータに変換します
+  poke term = case term of
+    Var i        -> poke (0 :: Word8) >> poke i
+    Con txt      -> poke (1 :: Word8) >> poke txt
+    Type         -> poke (2 :: Word8)
+    Kind         -> poke (3 :: Word8)
+    Pi t1 t2     -> poke (4 :: Word8) >> poke t1 >> poke t2
+    Lam t        -> poke (5 :: Word8) >> poke t
+    App t1 t2    -> poke (6 :: Word8) >> poke t1 >> poke t2
+    Not t        -> poke (7 :: Word8) >> poke t
+    Sigma t1 t2  -> poke (8 :: Word8) >> poke t1 >> poke t2
+    Pair t1 t2   -> poke (9 :: Word8) >> poke t1 >> poke t2
+    Proj sel t   -> poke (10 :: Word8) >> poke sel >> poke t
+    Disj t1 t2   -> poke (11 :: Word8) >> poke t1 >> poke t2
+    Iota sel t   -> poke (12 :: Word8) >> poke sel >> poke t
+    Unpack t1 t2 t3 t4 -> poke (13 :: Word8) >> poke t1 >> poke t2 >> poke t3 >> poke t4
+    Bot          -> poke (14 :: Word8)
+    Unit         -> poke (15 :: Word8)
+    Top          -> poke (16 :: Word8)
+    Entity       -> poke (17 :: Word8)
+    Nat          -> poke (18 :: Word8)
+    Zero         -> poke (19 :: Word8)
+    Succ t       -> poke (20 :: Word8) >> poke t
+    Natrec t1 t2 t3 -> poke (21 :: Word8) >> poke t1 >> poke t2 >> poke t3
+    Eq t1 t2 t3  -> poke (22 :: Word8) >> poke t1 >> poke t2 >> poke t3
+    Refl t1 t2   -> poke (23 :: Word8) >> poke t1 >> poke t2
+    Idpeel t1 t2 -> poke (24 :: Word8) >> poke t1 >> poke t2
+    Asp i t      -> poke (25 :: Word8) >> poke i >> poke t  -- Aspを追加
+    Lamvec t     -> poke (26 :: Word8) >> poke t            -- Lamvecを追加
+    Appvec i t   -> poke (27 :: Word8) >> poke i >> poke t  -- Appvecを追加
 
 fromDeBruijnSignature :: Signature -> VN.Signature
 fromDeBruijnSignature = map (\(cname, ty) -> (cname, fromDeBruijn ty))
