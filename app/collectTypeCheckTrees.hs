@@ -3,7 +3,7 @@
 
 import Options.Applicative hiding (style) --optparse-applicative
 import Control.Applicative (optional)     --base
-import Control.Monad (forM)               --base
+import Control.Monad (forM, foldM)               --base
 import ListT (ListT(..),cons,toList,fromFoldable) --list-t
 import qualified Data.Text.Lazy as T      --text
 import qualified Data.Text.Lazy.IO as T   --text
@@ -35,10 +35,14 @@ import DTS.TypeChecker (typeInfer,nullProver)
 import qualified DTS.QueryTypes as QT
 import qualified DTS.NaturalLanguageInference as NLI
 import qualified JSeM as JSeM                         --jsem
+import qualified Data.ByteString as B --bytestring
+import Data.Store (encode)
+import Interface.Tree as I
+
 
 main :: IO()
 main = do
-    contents <- T.readFile "../jsem/data/v1.0/Verbs.xml"
+    contents <- T.readFile "../JSeM/data/v1.0/Verbs.xml"
     lexicalResource <- LEX.lexicalResourceBuilder Juman.KWJA
     let style = I.TEXT
         beamW = 32
@@ -66,6 +70,8 @@ main = do
         return $ toList $ trawlParseResult $ NLI.parseWithTypeCheck parseSetting prover [("dummy",DTT.Entity)] [] sentences
     proofDiagrams <- mconcat parseResults
     mapM_ (T.putStrLn . I.toText) $ take nSample proofDiagrams
+    proofSearchResults <- getProofSearchResult proofDiagrams
+    B.writeFile "../neuralWani/data/typeCheckTrees" (encode proofSearchResults)
   
 {-- Trawling functions --}
 
@@ -76,4 +82,20 @@ trawlParseResult (NLI.SentenceAndParseTrees _ parseTreeAndFelicityChecks) = do
   ListT.cons typeCheckDiagram $ trawlParseResult parseResult
 trawlParseResult (NLI.InferenceResults _ _) = fromFoldable []
 trawlParseResult NLI.NoSentence = fromFoldable []
+
+getProofSearchResult :: [I.Tree QT.DTTrule DTT.Judgment] -> IO [(DTT.Judgment, QT.DTTrule)]
+getProofSearchResult ts = do
+  results <- forM ts makePair
+  return $ concat results
   
+makePair :: I.Tree QT.DTTrule DTT.Judgment -> IO [(DTT.Judgment, QT.DTTrule)]
+makePair resultList = do
+  processTree [] resultList
+  where
+    processTree pairs tree = do
+      let daughters = I.daughters tree
+      let newPair = (I.node tree, I.ruleName tree)
+      let updatedPairs = pairs ++ [newPair]
+      if null daughters
+        then return updatedPairs
+        else foldM processTree updatedPairs daughters
