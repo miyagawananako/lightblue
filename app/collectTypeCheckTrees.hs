@@ -3,7 +3,7 @@
 
 import Options.Applicative hiding (style) --optparse-applicative
 import Control.Applicative (optional)     --base
-import Control.Monad (forM, foldM)               --base
+import Control.Monad (forM, foldM, forM_)               --base
 import ListT (ListT(..),cons,toList,fromFoldable) --list-t
 import qualified Data.Text.Lazy as T      --text
 import qualified Data.Text.Lazy.IO as T   --text
@@ -42,37 +42,43 @@ import Interface.Tree as I
 
 main :: IO()
 main = do
-    contents <- T.readFile "../JSeM/data/v1.0/Verbs.xml"
-    lexicalResource <- LEX.lexicalResourceBuilder Juman.KWJA
-    let style = I.TEXT
-        beamW = 32
-        nParse = 1
-        nTypeCheck = 1
-        nProof = 1
-        nodeFilter = Nothing
-        noInference = False
-        noTypeCheck = True
-        nSample = 10
-        verbose = False
-        maxDepth = Just 4
-        maxTime = Nothing
-        handle = S.stdout
-        parseSetting = CP.ParseSetting jpOptions lexicalResource beamW nParse nTypeCheck nProof True Nothing nodeFilter noInference verbose
-        prover = NLI.getProver NLI.Wani $ QT.ProofSearchSetting maxDepth maxTime (Just QT.Classical)
-    parsedJSeM <- J.xml2jsemData $ T.toStrict contents
-    parseResults <- forM parsedJSeM $ \j -> do
-        let title = "JSeM-ID " ++ (StrictT.unpack $ J.jsem_id j)
-        S.putStr $ "[" ++ title ++ "] "
-        mapM_ StrictT.putStr $ J.premises j
-        S.putStr " ==> "
-        StrictT.putStrLn $ J.hypothesis j
-        let sentences = reverse $ (T.fromStrict $ J.hypothesis j):(map T.fromStrict $ J.premises j)
-        return $ toList $ trawlParseResult $ NLI.parseWithTypeCheck parseSetting prover [("dummy",DTT.Entity)] [] sentences
-    proofDiagrams <- mconcat parseResults
-    mapM_ (T.putStrLn . I.toText) $ take nSample proofDiagrams
-    proofSearchResults <- getProofSearchResult proofDiagrams
-    B.writeFile "../neuralWani/data/typeCheckTrees" (encode proofSearchResults)
-  
+    let jsemFileNameList = ["Adjectives", "CompoundAdjective", "GeneralizedQuantifier", "Question",
+                            "Adverb", "CompoundVerb", "Modality", "TemporalReference",
+                            "Attitudes", "Conditional", "NP", "Toritate",
+                            "AuxiliaryVerb", "Conjunction", "NewAdjective", "Verbs",
+                            "CaseParticle", "Coordination", "NominalAnaphora"]
+    forM_ jsemFileNameList $ \jsemFileName -> do
+      contents <- T.readFile ("../JSeM/data/v1.0/" ++ jsemFileName ++ ".xml")
+      lexicalResource <- LEX.lexicalResourceBuilder Juman.KWJA
+      let style = I.TEXT
+          beamW = 32
+          nParse = 1
+          nTypeCheck = 1
+          nProof = 1
+          nodeFilter = Nothing
+          noInference = False
+          noTypeCheck = True
+          nSample = 10
+          verbose = False
+          maxDepth = Just 4
+          maxTime = Nothing
+          handle = S.stdout
+          parseSetting = CP.ParseSetting jpOptions lexicalResource beamW nParse nTypeCheck nProof True Nothing nodeFilter noInference verbose
+          prover = NLI.getProver NLI.Wani $ QT.ProofSearchSetting maxDepth maxTime (Just QT.Classical)
+      parsedJSeM <- J.xml2jsemData $ T.toStrict contents
+      parseResults <- forM parsedJSeM $ \j -> do
+          let title = "JSeM-ID " ++ (StrictT.unpack $ J.jsem_id j)
+          S.putStr $ "[" ++ title ++ "] "
+          mapM_ StrictT.putStr $ J.premises j
+          S.putStr " ==> "
+          StrictT.putStrLn $ J.hypothesis j
+          let sentences = reverse $ (T.fromStrict $ J.hypothesis j):(map T.fromStrict $ J.premises j)
+          return $ toList $ trawlParseResult $ NLI.parseWithTypeCheck parseSetting prover [("dummy",DTT.Entity)] [] sentences
+      proofDiagrams <- mconcat parseResults
+      mapM_ (T.putStrLn . I.toText) $ take nSample proofDiagrams
+      proofSearchResults <- getProofSearchResult proofDiagrams
+      B.writeFile ("../neuralWani/data/JSeM/" ++ jsemFileName ++ (show $ length proofSearchResults) ++ " " ++ (show $ length (concat proofSearchResults))) (encode $ concat proofSearchResults)
+
 {-- Trawling functions --}
 
 trawlParseResult :: NLI.ParseResult -> ListT IO QT.DTTProofDiagram
@@ -83,11 +89,11 @@ trawlParseResult (NLI.SentenceAndParseTrees _ parseTreeAndFelicityChecks) = do
 trawlParseResult (NLI.InferenceResults _ _) = fromFoldable []
 trawlParseResult NLI.NoSentence = fromFoldable []
 
-getProofSearchResult :: [I.Tree QT.DTTrule DTT.Judgment] -> IO [(DTT.Judgment, QT.DTTrule)]
+getProofSearchResult :: [I.Tree QT.DTTrule DTT.Judgment] -> IO [[(DTT.Judgment, QT.DTTrule)]]
 getProofSearchResult ts = do
   results <- forM ts makePair
-  return $ concat results
-  
+  return results
+
 makePair :: I.Tree QT.DTTrule DTT.Judgment -> IO [(DTT.Judgment, QT.DTTrule)]
 makePair resultList = do
   processTree [] resultList
