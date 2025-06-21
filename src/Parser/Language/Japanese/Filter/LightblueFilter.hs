@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- {-|
 -- Module      : LightblueFilter
@@ -27,6 +27,7 @@ import qualified Data.Text.Lazy as T --text
 import qualified Parser.CCG as CCG   --lightblue
 import qualified Parser.ChartParser as LB --lightblue
 import qualified Parser.PartialParsing as LB --lightblue
+import Parser.LangOptions (defaultJpOptions)
 import qualified Parser.Language.Japanese.Templates as CCG-- lightblue (verbSR,verbCat)
 import qualified Parser.Language.Japanese.MyLexicon as CCG
 import qualified Parser.Language.Japanese.Lexicon as CCG
@@ -50,12 +51,14 @@ import Witherable(ordNub)
 
 -- type VVMap = M.Map T.Text (T.Text, T.Text)
 
+-- The type for node filters
+type Filter = T.Text -> IO (Int -> Int -> [CCG.Node] -> [CCG.Node])
+
+nullFilter :: Filter
+nullFilter = \_ -> return (\_ _ -> id) 
 
 -- MorphAnalyzerName = JUMAN | JUMANPP | KWJA
 morphAnalyzer = JU.JUMANPP
-
-nullFilter :: T.Text -> IO (Int -> Int -> [CCG.Node] -> [CCG.Node])
-nullFilter = \_ -> return (\_ _ -> id) 
 
 ifDebug :: Maybe (Int,Int)
 ifDebug = Nothing    -- No Dump
@@ -296,8 +299,9 @@ createFilterFrom' compVerbList abcVerbList (c:cs) =
 
 getVerbPosConjDaihyo :: T.Text -> T.Text -> IO (T.Text)
 getVerbPosConjDaihyo fstverb sndverb = do
-  lexResource <- CCG.lexicalResourceBuilder morphAnalyzer
-  lexicon <- CCG.setupLexicon lexResource sndverb
+  --lexResource <- CCG.lexicalResourceBuilder morphAnalyzer
+  langOptions <- defaultJpOptions
+  (_,lexicon) <- CCG.setupLexicon langOptions sndverb
   -- let lexicon = CCG.lookupLexicon sndverb lexicon'
   if null lexicon then D.trace ("Empty lexicon") (return $ (""))
   else do

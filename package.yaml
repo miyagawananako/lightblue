@@ -1,5 +1,5 @@
 name:         lightblue
-version:      0.4.0
+version:      0.4.1
 description:  Please see the README on GitHub at <https://github.com/DaisukeBekki/lightblue#README.md>
 homepage:     https://github.com/DaisukeBekki/lightblue
 category:     CCG Parser, Dependent Type Prover
@@ -46,6 +46,7 @@ dependencies:
   - witherable >= 0.4
   - parserModules
   - unicode-show >= 0.1
+  - parallel >= 3.2.2
 
 library:
   source-dirs: src
@@ -56,6 +57,7 @@ library:
   - Parser.CCG
   - Parser.PartialParsing
   - Parser.Language
+  - Parser.LangOptions
   - Parser.Language.Japanese.Lexicon
   - Parser.Language.Japanese.MyLexicon
   - Parser.Language.Japanese.Templates
@@ -63,9 +65,10 @@ library:
   - Parser.Language.Japanese.Juman.Config
   - Parser.Language.Japanese.Juman.ParseJumanDic
   - Parser.Language.Japanese.Juman.ConvertJumanDic
-  - Parser.Language.Japanese.Filter.KWJAFilter
+  - Parser.Language.Japanese.Filter
   - Parser.Language.Japanese.Filter.KNPFilter
-  - Parser.Language.Japanese.Filter.LightblueFilter
+  - Parser.Language.Japanese.Filter.KWJAFilter
+  - Parser.Language.English.Lexicon
   - Interface
   - Interface.Text
   - Interface.TeX

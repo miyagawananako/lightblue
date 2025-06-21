@@ -20,7 +20,7 @@ module Parser.CCG (
   showScore,
   -- * Tests
   isBaseCategory,
-  isBunsetsu,
+  --isBunsetsu,
   -- * Combinatory Rules
   unaryRules,
   binaryRules,
@@ -115,9 +115,16 @@ data Cat =
   | CONJ             -- ^ CON
   | LPAREN           -- ^ A category for left parentheses
   | RPAREN           -- ^ A category for right parentheses
+  | PUNCT            -- ^ A category for a punctuation
+  | PERIOD           -- ^ A category for a period
   | SL Cat Cat       -- ^ X/Y
   | BS Cat Cat       -- ^ X\\Y
   | T Bool Int Cat   -- ^ Category variables, where Int is an index, Cat is a restriction for its head. 
+  -- | T True i cat は、戸次(2010)でT[i]と書かれている範疇変数で、catは無視される。
+  -- | T[i]自体は様々な統語範疇にinstanciateされ得るが、iが同じT[i]同士は構造共有される
+  -- | （つまり、含まれる統語範疇の統語素性はuniftyされる）。
+  -- | T False i catは、戸次(2010)で統語素性の共有がある統語範疇を指す。
+  -- | たとえばS<1>/S<1>となっていたら左右のSは同じ統語素性を持つが、これをlightblueでは (T False 1 S) `SL` (T False 1 S)と書く。
 
 -- | checks if given two categories can be coordinated.
 instance Eq Cat where
@@ -133,6 +140,8 @@ instance Eq Cat where
   CONJ == CONJ = True
   LPAREN == LPAREN = True
   RPAREN == RPAREN = True
+  PUNCT == PUNCT = True
+  PERIOD == PERIOD = True
   _ == _ = False
 
 -- | `toText` method is invoked.
@@ -154,12 +163,16 @@ instance SimpleText Cat where
                        toText pmf,
                        "]"
                        ]
+    S []        -> "S"
     NP [cas]    -> T.concat ["NP[", toText cas, "]"]
+    NP []       -> "NP"
     Sbar [sf]   -> T.concat ["Sbar[", toText sf, "]"]
     N           -> "N"
     CONJ        -> "CONJ"
     LPAREN      -> "LPAREN"
     RPAREN      -> "RPAREN"
+    PUNCT       -> "PUNCT"
+    PERIOD      -> "PERIOD"
     _ -> "Error in Simpletext Cat"
     where -- A bracketed version of `toText'` function
     toText' c = if isBaseCategory c
@@ -186,6 +199,8 @@ instance Typeset Cat where
     CONJ        -> "\\conj"
     LPAREN      -> "LPAREN"
     RPAREN      -> "RPAREN"
+    PUNCT       -> "PUNCT"
+    PERIOD      -> "PERIOD"
     _ -> "Error: toTeX Cat"
     where toTeX' c = if isBaseCategory c 
                      then toTeX c
@@ -214,6 +229,8 @@ instance MathML Cat where
     CONJ        -> "<mi>CONJ</mi>"
     LPAREN      -> "<mi>LPAREN</mi>"
     RPAREN      -> "<mi>RPAREN</mi>"
+    PUNCT       -> "<mi>PUNCT</mi>"
+    PERIOD      -> "<mi>PERIOD</mi>"
     _           -> "<mtext>Error: toMathML Cat</mtext>"
     -- newcat = T.replace ">" "&gt;" $ T.replace "<" "&lt;" $ toText (cat node);
     where toMathML' c = if isBaseCategory c 
@@ -457,21 +474,6 @@ isNoncaseNP c = case c of
   NP (SF _ v:_) -> Nc `elem` v
   _ -> False
 
--- | A test to check if a given category is the one that can appear on the left adjacent of a punctuation.
-isBunsetsu :: Cat -> Bool
-isBunsetsu c = case c of
-  SL x _ -> isBunsetsu x
-  BS x _ -> isBunsetsu x
-  LPAREN -> False
-  S (_:(f:_)) -> let katsuyo = case f of 
-                                 F feat -> feat
-                                 SF _ feat -> feat in
-                 if null $ L.intersect katsuyo [Cont,Term,Attr,Hyp,Imper,Pre,NTerm,NStem,TeForm,NiForm]
-                    then False
-                    else True
-  N -> False
-  _ -> True
-
 endsWithT :: Cat -> Bool
 endsWithT c = case c of
   SL x _ -> endsWithT x
@@ -504,9 +506,11 @@ data RuleSymbol =
   | FFSx2 -- ^ Forward function crossed substitution rule 2
   | COORD -- ^ Coordination rule
   | PAREN -- ^ Parenthesis rule
+  | PNCT  -- ^ Punctuation rule
+  | PRD   -- ^ Period rule
   | WRAP  -- ^ Wrap rule
   | DC    -- ^ Dynamic conjunction rule
-  | DREL  -- ^ Discourse Relation rule
+  -- | DREL  -- ^ Discourse Relation rule
   deriving (Eq, Show)
 
 -- | The simple-text representation of the rule symbols.
@@ -528,9 +532,11 @@ instance SimpleText RuleSymbol where
     FFSx2 -> ">Sx2"
     COORD -> "<Φ>"
     PAREN -> "PAREN"
+    PNCT   -> "PUNCT"
+    PRD   -> "PERIOD"
     WRAP  -> "WRAP"
     DC    -> "DC"
-    DREL  -> "DREL"
+    -- DREL  -> "DREL"
     -- CNP -> "CNP"
 
 instance Typeset RuleSymbol where
@@ -551,9 +557,11 @@ instance Typeset RuleSymbol where
     FFSx2 -> ">S_{\\times}^2"
     COORD -> "\\langle\\Phi\\rangle"
     PAREN -> "PAREN"
+    PNCT  -> "PUNCT"
+    PRD   -> "PERIOD"
     WRAP  -> "WRAP"
     DC    -> "DC"
-    DREL  -> "DREL"
+    -- DREL  -> "DREL"
     -- CNP -> "CNP"
 
 instance MathML RuleSymbol where
@@ -568,7 +576,9 @@ unaryRules _ prevlist = prevlist
 -- | The function to apply all the binary rules to a given pair of CCG nodes.
 binaryRules :: Node -> Node -> [Node] -> [Node]
 binaryRules lnode rnode = 
-  forwardFunctionCrossedSubstitution2Rule lnode rnode
+  periodRule lnode rnode
+  . punctRule lnode rnode
+  . forwardFunctionCrossedSubstitution2Rule lnode rnode
   . forwardFunctionCrossedSubstitutionRule lnode rnode
   . forwardFunctionCrossedComposition2Rule lnode rnode
   . forwardFunctionCrossedComposition1Rule lnode rnode
@@ -923,6 +933,54 @@ forwardFunctionCrossedSubstitution2Rule lnode@(Node {rs=_,cat=(((x `SL` y1) `BS`
                         sig = sig(lnode) ++ sig(rnode)
                         }:prevlist
 forwardFunctionCrossedSubstitution2Rule _ _ prevlist = prevlist
+
+-- | Punct rule.
+punctRule :: Node -> Node -> [Node] -> [Node]
+punctRule lnode@(Node {rs=r, cat=x, sem=f}) rnode@(Node {cat=PUNCT}) prevlist =
+  if isBunsetsu x 
+    then 
+      Node {
+        rs = PNCT,
+        pf = pf(lnode) `T.append` pf(rnode),
+        cat = x,
+        sem = f,
+        daughters = [lnode,rnode],
+        score = score(lnode),
+        source = "", 
+        sig = sig lnode
+        }:prevlist
+    else prevlist
+punctRule _ _ prevlist = prevlist
+
+-- | A test to check if a given category is the one that can appear on the left adjacent of a punctuation.
+isBunsetsu :: Cat -> Bool
+isBunsetsu c = case c of
+  SL x _ -> isBunsetsu x
+  BS x _ -> isBunsetsu x
+  LPAREN -> False
+  S (_:(f:_)) -> let katsuyo = case f of 
+                                 F feat -> feat
+                                 SF _ feat -> feat in
+                 if null $ L.intersect katsuyo [Cont,Term,Attr,Hyp,Imper,Pre,NTerm,NStem,TeForm,NiForm]
+                    then False
+                    else True
+  N -> False
+  _ -> True
+
+-- | Period rule.
+periodRule :: Node -> Node -> [Node] -> [Node]
+periodRule lnode@(Node {rs=r, cat=(S s1), sem=f}) rnode@(Node {cat=PERIOD}) prevlist =
+  Node {
+    rs = PRD,
+    pf = pf(lnode) `T.append` pf(rnode),
+    cat = S s1,
+    sem = f,
+    daughters = [lnode,rnode],
+    score = score(lnode),
+    source = "", 
+    sig = sig lnode
+    }:prevlist
+periodRule _ _ prevlist = prevlist
 
 -- | Coordination rule.
 coordinationRule :: Node -> Node -> Node -> [Node] -> [Node]

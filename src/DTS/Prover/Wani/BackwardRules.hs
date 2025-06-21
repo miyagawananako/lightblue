@@ -10,7 +10,8 @@ module DTS.Prover.Wani.BackwardRules
   eqForm,
   membership,
   dne,
-  efq
+  efq,
+  topIntro
 ) where
 
 import qualified DTS.DTTdeBruijn as DdB   -- DTT
@@ -105,6 +106,19 @@ piIntro goal setting =
               in [WB.SubGoalSet QT.PiI M.Nothing [subgoal1,subgoal2] dSide]
         in (subgoalsets,"")
       _ -> ([],WB.exitMessage (WB.TypeMisMatch arrowType) QT.PiI)
+
+-- | topIntro
+topIntro :: WB.Rule
+topIntro goal setting = 
+  case WB.acceptableType QT.TopI goal True [(A.Conclusion DdB.Top)] of
+  (Nothing,message) -> ([],message)
+  (Just _,_) -> 
+    case WB.termFromGoal goal of
+      M.Just (A.Conclusion DdB.Unit) -> 
+        let (sig,var) = WB.conFromGoal goal
+            subgoalsets = [WB.SubGoalSet QT.TopI M.Nothing [] (A.AJudgment sig var (A.Conclusion DdB.Unit) (A.Conclusion DdB.Top))]
+        in (subgoalsets,"")
+      term ->([],WB.exitMessage (WB.TermMisMatch term) QT.TopI)
 
 -- | piElim rule
 --
@@ -284,7 +298,7 @@ piElim goal setting =
                         dSide =
                           let
                             arrowTerm = M.maybe (A.betaReduce $ foldl A.ArrowApp (A.termfromAJudgment functionJudgment) (reverse $ map A.aVar [(-argNum)..(-1)])) id maybeTerm
-                            arrowType' = foldl (\r (old,newNegate) -> A.arrowSubst r (A.aVar $ negate newNegate) (A.aVar old)) (A.shiftIndices result (negate $ length args) 0) (zip (reverse [0..(argNum-1)]) [1..])
+                            arrowType' = A.shiftIndices (foldl (\r (old,newNegate) -> A.arrowSubst r (A.aVar $ negate newNegate) (A.aVar old)) result (zip (reverse [0..(argNum-1)]) [1..argNum])) (negate argNum) argNum
                           in A.AJudgment sig var arrowTerm arrowType'
                         subgoals =
                           let
@@ -372,6 +386,7 @@ piForm goal setting =
           in ([subgoalset],"")
         term ->  -- if term is M.Nothing or M.Just `not Arrow type`, return WB.TermMisMatch
           ([],WB.exitMessage (WB.TermMisMatch term) QT.PiF)
+
 
 -- | sigmaIntro
 -- 
@@ -478,10 +493,9 @@ sigmaIntro goal setting =
                       subgoalForMem idInLstFromOld = 
                         let origin = (reverse $ lat:for) !! idInLstFromOld
                             parentLst' = M.maybe [] (\parentIds -> filter (\num -> 0 <= num && num < idInLstFromOld) $ L.sort parentIds) (lookup idInLstFromOld parentLsts)
-                            substLst = map (\num ->  (WB.SubstSet [] (WB.generatedTempTerm origin (T.pack $ show num)) num)) parentLst'
+                            substLst = map (\num ->  (WB.SubstSet [] (WB.generatedTempTerm origin (T.pack $ show (idInLstFromOld-1-num))) num)) parentLst'
                             targetMem = A.shiftIndices (foldl (\target (WB.SubstSet lst term num) -> A.arrowSubst target term (A.aVar num)) origin substLst) (-idInLstFromOld) 0
                             goal' = WB.Goal sig var (if isDeduce then M.Nothing else M.Just$ termsInProofTerm !! idInLstFromOld) [targetMem]
--- ここ
                             clues = --
                               M.mapMaybe 
                                 (\(argIdFromOld,parentLst) -> 
