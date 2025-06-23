@@ -343,9 +343,9 @@ lightblueMain (Options lang commands style proverName filepath beamW nParse nTyp
     -- |
     -- | Other commands
     -- |
-    lightblueMainLocal Version _ _ _ = showVersion
-    lightblueMainLocal Stat _ _ _ = showStat
-    lightblueMainLocal Test _ _ _ = test
+    lightblueMainLocal Version _ _ = showVersion
+    lightblueMainLocal Stat _ _ = showStat
+    lightblueMainLocal Test _ _ = test
     -- -- |
     -- -- | Debug 
     -- -- |
