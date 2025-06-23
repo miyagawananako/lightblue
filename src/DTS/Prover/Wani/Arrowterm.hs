@@ -7,6 +7,7 @@ module DTS.Prover.Wani.Arrowterm
   aVar,
   aCon,
   aType,
+  aEntityName,
   dt2Arrow,
   arrow2DT,
   arrowNotat,
@@ -170,8 +171,13 @@ dtNotatSelector :: ArrowSelector -> DdB.Selector
 dtNotatSelector ArrowFst = DdB.Fst
 dtNotatSelector ArrowSnd = DdB.Snd
 
+aEntityName = "Entity"
+
 arrow2DT :: Arrowterm -> (DdB.Preterm)
-arrow2DT (Conclusion a) = a
+arrow2DT (Conclusion a) = 
+  case a of 
+    DdB.Con conName -> if conName == aEntityName then DdB.Entity else a
+    _ -> a
 arrow2DT (ArrowSigma' [] t)= arrow2DT t
 arrow2DT (ArrowSigma' (f:r) t)= arrow2DT (ArrowSigma' r (Conclusion (DdB.Sigma (arrow2DT f)  (arrow2DT t))))
 arrow2DT (ArrowPair h t)= DdB.Pair (arrow2DT h) (arrow2DT t)
@@ -220,6 +226,7 @@ dt2Arrow DdB.Type = Conclusion DdB.Type
 dt2Arrow (DdB.Var i) = Conclusion $ DdB.Var i
 dt2Arrow (DdB.Con i) = Conclusion $ DdB.Con i
 dt2Arrow (DdB.Not i) =Arrow [dt2Arrow i] $Conclusion DdB.Bot
+dt2Arrow (DdB.Entity) = Conclusion $ DdB.Con aEntityName
 dt2Arrow (DdB.Pi h t) =
   case dt2Arrow t of
     Arrow env t' -> Arrow (env ++ [dt2Arrow h]) t'
@@ -396,6 +403,11 @@ canBeSame lim (  ArrowApp a1 a2) (  ArrowApp a1' a2')=
    canBeSame lim a1 a1' && canBeSame lim a2 a2'
 canBeSame lim (  ArrowProj s a) (  ArrowProj s' a') =
   s == s' && canBeSame lim a a'
+canBeSame lim ( ArrowProj _ _) a = 
+  case a of 
+    ArrowEq _ _ _ -> False
+    _ -> True
+  -- anum <= lim
 canBeSame lim (  ArrowPair a1 a2) (  ArrowPair a1' a2')=
   canBeSame lim a1 a1' && canBeSame lim a2 a2'
 canBeSame lim (  ArrowLam a) (  ArrowLam a') = canBeSame lim a a'

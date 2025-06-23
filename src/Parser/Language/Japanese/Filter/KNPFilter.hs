@@ -26,9 +26,9 @@ import qualified Parser.Language.Japanese.Filter.LightblueFilter as LF (getFeatu
 import qualified Data.Text as T    --text
 import qualified Data.Text.Lazy as TL --text
 import qualified Parser.CCG as CCG   --lightblue
-import qualified Parser.ChartParser as LB  --lightblue
+--import qualified Parser.ChartParser as LB  --lightblue
 import qualified Parser.Language.Japanese.Templates as LB --lightblue
-import qualified Parser.Language.Japanese.Lexicon as LB () --lightblue
+--import qualified Parser.Language.Japanese.Lexicon as LB () --lightblue
 import qualified Parser.Language.Japanese.MyLexicon as LB (verblex)
 import qualified Text.Show.Unicode as U
 import qualified Data.Map.Strict as M

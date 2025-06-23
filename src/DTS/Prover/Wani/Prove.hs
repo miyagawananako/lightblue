@@ -75,8 +75,8 @@ prove' QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) =  -- LiftT 
         WB.maxtime = case maxTime of
                         Just t -> t
                         Nothing -> 100000,
-        WB.debug = False,
+        WB.debug = 1,
         WB.sStatus = WB.statusDef
         };
-      result =  hojo ctx sig typ setting
+      result =  hojo ctx ((A.aEntityName,DdB.Type):sig) typ setting
   in ListT.fromFoldable $ map A.aTreeTojTree' $ WB.trees result
