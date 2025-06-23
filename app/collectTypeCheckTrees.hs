@@ -24,7 +24,7 @@ import qualified Parser.Language.Japanese.MyLexicon as LEX
 import qualified Parser.Language.Japanese.Juman.CallJuman as Juman
 import qualified Parser.Language.Japanese.Filter.KNPFilter as Filter
 import qualified Parser.Language.Japanese.Filter.KWJAFilter as Filter
-import Parser.Language (jpOptions)
+import Parser.LangOptions (defaultJpOptions)
 import qualified Interface as I
 import qualified Interface.Text as I
 import qualified JSeM as J
@@ -38,14 +38,13 @@ import qualified JSeM as JSeM                         --jsem
 
 main :: IO()
 main = do
-    contents <- T.readFile "../jsem/data/v1.0/Verbs.xml"
-    lexicalResource <- LEX.lexicalResourceBuilder Juman.KWJA
+    contents <- T.readFile "../JSeM/data/v1.0/Verbs.xml"
+    langOptions <- defaultJpOptions
     let style = I.TEXT
         beamW = 32
         nParse = 1
         nTypeCheck = 1
         nProof = 1
-        nodeFilter = Nothing
         noInference = False
         noTypeCheck = True
         nSample = 10
@@ -53,7 +52,7 @@ main = do
         maxDepth = Just 4
         maxTime = Nothing
         handle = S.stdout
-        parseSetting = CP.ParseSetting jpOptions lexicalResource beamW nParse nTypeCheck nProof True Nothing nodeFilter noInference verbose
+        parseSetting = CP.ParseSetting langOptions beamW nParse nTypeCheck nProof True Nothing noInference verbose
         prover = NLI.getProver NLI.Wani $ QT.ProofSearchSetting maxDepth maxTime (Just QT.Classical)
     parsedJSeM <- J.xml2jsemData $ T.toStrict contents
     parseResults <- forM parsedJSeM $ \j -> do
