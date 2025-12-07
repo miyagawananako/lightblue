@@ -16,15 +16,14 @@ module DTS.NaturalLanguageInference (
   --, InferenceResult(..)
   , ProverName(..)
   , getProver
+  , InferenceLabel
   , ParseResult(..)
   , ParseTreeAndFelicityChecks(..)
   , QueryAndDiagrams(..)
   , parseWithTypeCheck
   , trawlParseResult
-  -- RTE API (自然言語用)
   , RTEResult(..)
   , runRTE
-  -- RTE API (Preterm用)
   , RTEPretermResult(..)
   , runRTEWithPreterms
   ) where
@@ -146,15 +145,15 @@ takeNbest n l
   | n >= 0 = ListT.take n l
   | otherwise = l
 
-{-- Core inference logic (共通の推論ロジック) --}
+{-- Core inference logic (shared inference logic) --}
 
--- | 推論クエリを作成し、証明探索を実行する（共通ヘルパー関数）
--- | sequentialTypeCheck と runRTEWithPreterms の両方から使用される
-runInferenceCore :: QT.Prover         -- ^ 証明器
-                 -> Int               -- ^ 証明の最大数 (-1で無制限)
-                 -> DTT.Signature     -- ^ シグネチャ
-                 -> DTT.Context       -- ^ コンテキスト（前提）
-                 -> DTT.Preterm       -- ^ 仮説
+-- | Create inference queries and execute proof search (shared helper function)
+-- | Used by both sequentialTypeCheck and runRTEWithPreterms
+runInferenceCore :: QT.Prover         -- ^ Prover
+                 -> Int               -- ^ Maximum number of proofs (-1 for unlimited)
+                 -> DTT.Signature     -- ^ Signature
+                 -> DTT.Context       -- ^ Premises
+                 -> DTT.Preterm       -- ^ Hypothesis
                  -> (QueryAndDiagrams, QueryAndDiagrams)
 runInferenceCore prover nProof signtr contxt hypothesis =
   let psqPos = DTT.ProofSearchQuery signtr contxt hypothesis
@@ -199,28 +198,20 @@ parallelFor (x:xs) f = fx `par` fxs `pseq` (fx:fxs)
 
 {-- RTE (Recognizing Textual Entailment) API --}
 
--- | RTEの結果を表すデータ型
+-- | Data type representing RTE result
 data RTEResult = RTEResult {
-  rteLabel :: JSeM.YesNo,        -- ^ 推論ラベル (Yes/No/Unk/Other)
-  rteParseResult :: ParseResult  -- ^ パース結果（詳細情報が必要な場合用）
+  rteLabel :: InferenceLabel,    -- ^ Inference label (Yes/No/Unk/Other)
+  rteParseResult :: ParseResult  -- ^ Parse result (for detailed information if needed)
   }
 
--- | RTEを実行する
--- | 前提文のリストと仮説文を受け取り、推論ラベルとパース結果を返す
--- | 
--- | 使用例:
--- | @
--- | let signature = [("dummy", DTT.Entity)]
--- |     context = []
--- | result <- runRTE parseSetting prover signature context ["太郎は学生だ", "学生は人間だ"] "太郎は人間だ"
--- | print $ rteLabel result  -- Yes/No/Unk/Other
--- | @
-runRTE :: CP.ParseSetting     -- ^ パース設定
-       -> QT.Prover           -- ^ 証明器
-       -> DTT.Signature       -- ^ 初期シグネチャ（通常は [("dummy", DTT.Entity)]）
-       -> DTT.Context         -- ^ 初期コンテキスト（通常は []）
-       -> [T.Text]            -- ^ 前提文のリスト
-       -> T.Text              -- ^ 仮説文
+-- | Execute RTE
+-- | Takes a list of premise sentences and a hypothesis sentence, returns inference label and parse result
+runRTE :: CP.ParseSetting     -- ^ Parse setting
+       -> QT.Prover           -- ^ Prover
+       -> DTT.Signature       -- ^ Initial signature
+       -> DTT.Context         -- ^ Initial context
+       -> [T.Text]            -- ^ List of premise sentences
+       -> T.Text              -- ^ Hypothesis sentence
        -> IO RTEResult
 runRTE parseSetting prover signature context premises hypothesis = do
   let sentences = premises ++ [hypothesis]
@@ -231,48 +222,30 @@ runRTE parseSetting prover signature context premises hypothesis = do
         (bestLabel:_) -> bestLabel
   return $ RTEResult prediction parseResult
 
-{-- RTE API for Preterm (自然言語パースをスキップ) --}
-
--- | Preterm形式でのRTE結果を表すデータ型
+-- | Data type representing RTE result in Preterm format
 data RTEPretermResult = RTEPretermResult {
-  rtePretermLabel :: JSeM.YesNo,                              -- ^ 推論ラベル (Yes/No/Unk)
-  rtePretermQueryPos :: DTT.ProofSearchQuery,                 -- ^ 肯定の証明クエリ
-  rtePretermQueryNeg :: DTT.ProofSearchQuery,                 -- ^ 否定の証明クエリ
-  rtePretermProofsPos :: [QT.DTTProofDiagram],                -- ^ 肯定の証明図
-  rtePretermProofsNeg :: [QT.DTTProofDiagram]                 -- ^ 否定の証明図
+  rtePretermLabel :: InferenceLabel,                          -- ^ Inference label (Yes/No/Unk)
+  rtePretermQueryPos :: DTT.ProofSearchQuery,                 -- ^ Positive proof query
+  rtePretermQueryNeg :: DTT.ProofSearchQuery,                 -- ^ Negative proof query
+  rtePretermProofsPos :: [QT.DTTProofDiagram],                -- ^ Positive proof diagrams
+  rtePretermProofsNeg :: [QT.DTTProofDiagram]                 -- ^ Negative proof diagrams
   }
 
--- | Preterm形式でRTEを実行する
--- | 自然言語のパースをスキップして、直接DTT.Pretermの形で前提と仮説を受け取る
--- | 
--- | 使用例:
--- | @
--- | let signature = [("human", DTT.Pi DTT.Entity DTT.Type), ("student", DTT.Pi DTT.Entity DTT.Type)]
--- |     -- 前提: ∀x. student(x) → human(x)
--- |     premise = DTT.Pi (DTT.App (DTT.Con "student") (DTT.Var 0)) 
--- |                      (DTT.App (DTT.Con "human") (DTT.Var 1))
--- |     -- 仮説: student(taro) → human(taro)
--- |     hypothesis = DTT.Pi (DTT.App (DTT.Con "student") (DTT.Con "taro"))
--- |                         (DTT.App (DTT.Con "human") (DTT.Con "taro"))
--- | result <- runRTEWithPreterms prover signature [premise] hypothesis (-1)
--- | print $ rtePretermLabel result  -- Yes/No/Unk
--- | @
-runRTEWithPreterms :: QT.Prover         -- ^ 証明器
-                   -> DTT.Signature     -- ^ シグネチャ（定数の型宣言）
-                   -> [DTT.Preterm]     -- ^ 前提のリスト（Context）
-                   -> DTT.Preterm       -- ^ 仮説
-                   -> Int               -- ^ 証明の最大数 (-1で無制限)
+-- | Execute RTE in Preterm format
+-- | Skips natural language parsing and directly takes premises and hypothesis as DTT.Preterm
+runRTEWithPreterms :: QT.Prover         -- ^ Prover
+                   -> DTT.Signature     -- ^ Signature
+                   -> [DTT.Preterm]     -- ^ Premises
+                   -> DTT.Preterm       -- ^ Hypothesis
+                   -> Int               -- ^ Maximum number of proofs (-1 for unlimited)
                    -> IO RTEPretermResult
 runRTEWithPreterms prover signature premises hypothesis nProof = do
-  -- 共通の推論ロジックを使用
   let (QueryAndDiagrams psqPos resultPosListT, QueryAndDiagrams psqNeg resultNegListT) =
         runInferenceCore prover nProof signature premises hypothesis
-  -- 証明探索を実行（遅延評価を即時評価に変換）
   proofsPos <- toList resultPosListT
   proofsNeg <- toList resultNegListT
-  -- 推論ラベルを決定
   let label = case () of
-        _ | not (Prelude.null proofsPos) -> JSeM.Yes  -- 肯定の証明が見つかった
-          | not (Prelude.null proofsNeg) -> JSeM.No   -- 否定の証明が見つかった
-          | otherwise                    -> JSeM.Unk -- どちらも見つからない
+        _ | not (Prelude.null proofsPos) -> JSeM.Yes  -- Positive proof found
+          | not (Prelude.null proofsNeg) -> JSeM.No   -- Negative proof found
+          | otherwise                    -> JSeM.Unk -- Neither found
   return $ RTEPretermResult label psqPos psqNeg proofsPos proofsNeg

@@ -316,11 +316,9 @@ lightblueMain (Options lang commands style proverName filepath beamW nParse nTyp
         S.putStr "\n"
         let premises = map T.fromStrict $ J.premises j
             hypothesis = T.fromStrict $ J.hypothesis j
-        -- RTEを実行
         rteResult <- NLI.runRTE parseSetting prover [("dummy",DTT.Entity)] [] premises hypothesis
         let prediction = NLI.rteLabel rteResult
             groundTruth = J.jsemLabel2YesNo $ J.answer j
-        -- パース結果を表示
         PPR.printParseResult handle style 1 noTypeCheck False title (NLI.rteParseResult rteResult)
         S.putStrLn $ "\nPrediction: " ++ (show prediction) ++ "\nGround truth: " ++ (show groundTruth) ++ "\n"
         return (prediction, groundTruth)
