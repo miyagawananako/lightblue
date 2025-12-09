@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 {-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+=======
+{-# LANGUAGE DeriveGeneric #-}
+>>>>>>> feature/remove_hexpat
 
 -- {-|
 -- Module      : LightblueFilter
@@ -27,6 +31,10 @@ import qualified Data.Text.Lazy as T --text
 import qualified Parser.CCG as CCG   --lightblue
 import qualified Parser.ChartParser as LB --lightblue
 import qualified Parser.PartialParsing as LB --lightblue
+<<<<<<< HEAD
+=======
+import Parser.LangOptions (defaultJpOptions)
+>>>>>>> feature/remove_hexpat
 import qualified Parser.Language.Japanese.Templates as CCG-- lightblue (verbSR,verbCat)
 import qualified Parser.Language.Japanese.MyLexicon as CCG
 import qualified Parser.Language.Japanese.Lexicon as CCG
@@ -50,13 +58,24 @@ import Witherable(ordNub)
 
 -- type VVMap = M.Map T.Text (T.Text, T.Text)
 
+<<<<<<< HEAD
+=======
+-- The type for node filters
+type Filter = T.Text -> IO (Int -> Int -> [CCG.Node] -> [CCG.Node])
+
+nullFilter :: Filter
+nullFilter = \_ -> return (\_ _ -> id) 
+>>>>>>> feature/remove_hexpat
 
 -- MorphAnalyzerName = JUMAN | JUMANPP | KWJA
 morphAnalyzer = JU.JUMANPP
 
+<<<<<<< HEAD
 nullFilter :: T.Text -> IO (Int -> Int -> [CCG.Node] -> [CCG.Node])
 nullFilter = \_ -> return (\_ _ -> id) 
 
+=======
+>>>>>>> feature/remove_hexpat
 ifDebug :: Maybe (Int,Int)
 ifDebug = Nothing    -- No Dump
 -- ifDebug = (10,12) -- Dump Nodes in the box (10,12)
@@ -296,8 +315,14 @@ createFilterFrom' compVerbList abcVerbList (c:cs) =
 
 getVerbPosConjDaihyo :: T.Text -> T.Text -> IO (T.Text)
 getVerbPosConjDaihyo fstverb sndverb = do
+<<<<<<< HEAD
   lexResource <- CCG.lexicalResourceBuilder morphAnalyzer
   lexicon <- CCG.setupLexicon lexResource sndverb
+=======
+  --lexResource <- CCG.lexicalResourceBuilder morphAnalyzer
+  langOptions <- defaultJpOptions
+  (_,lexicon) <- CCG.setupLexicon langOptions sndverb
+>>>>>>> feature/remove_hexpat
   -- let lexicon = CCG.lookupLexicon sndverb lexicon'
   if null lexicon then D.trace ("Empty lexicon") (return $ (""))
   else do

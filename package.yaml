@@ -1,5 +1,9 @@
 name:         lightblue
+<<<<<<< HEAD
 version:      0.4.0
+=======
+version:      0.4.1
+>>>>>>> feature/remove_hexpat
 description:  Please see the README on GitHub at <https://github.com/DaisukeBekki/lightblue#README.md>
 homepage:     https://github.com/DaisukeBekki/lightblue
 category:     CCG Parser, Dependent Type Prover
@@ -46,6 +50,14 @@ dependencies:
   - witherable >= 0.4
   - parserModules
   - unicode-show >= 0.1
+<<<<<<< HEAD
+=======
+  - parallel >= 3.2.2
+  - transformers >= 0.5.6.2
+  - http-conduit >= 2.3.7
+  - http-client-tls >= 0.3.5
+  - dotenv >= 0.0.4
+>>>>>>> feature/remove_hexpat
 
 library:
   source-dirs: src
@@ -56,6 +68,7 @@ library:
   - Parser.CCG
   - Parser.PartialParsing
   - Parser.Language
+  - Parser.LangOptions
   - Parser.Language.Japanese.Lexicon
   - Parser.Language.Japanese.MyLexicon
   - Parser.Language.Japanese.Templates
@@ -63,9 +76,16 @@ library:
   - Parser.Language.Japanese.Juman.Config
   - Parser.Language.Japanese.Juman.ParseJumanDic
   - Parser.Language.Japanese.Juman.ConvertJumanDic
+<<<<<<< HEAD
   - Parser.Language.Japanese.Filter.KWJAFilter
   - Parser.Language.Japanese.Filter.KNPFilter
   - Parser.Language.Japanese.Filter.LightblueFilter
+=======
+  - Parser.Language.Japanese.Filter
+  - Parser.Language.Japanese.Filter.KNPFilter
+  - Parser.Language.Japanese.Filter.KWJAFilter
+  - Parser.Language.English.Lexicon
+>>>>>>> feature/remove_hexpat
   - Interface
   - Interface.Text
   - Interface.TeX
@@ -73,6 +93,7 @@ library:
   - Interface.HTML
   - Interface.SVG
   - Interface.Tree
+  - Interface.PrintParseResult
   - DTS.Index
   - DTS.GeneralTypeQuery
   - DTS.UDTTdeBruijn
@@ -82,9 +103,13 @@ library:
   - DTS.QueryTypes
   - DTS.TypeChecker
   - DTS.NaturalLanguageInference
+  - DTS.Prover.Oracle
   - DTS.Prover.Wani.WaniBase
   - DTS.Prover.Wani.Forward
+<<<<<<< HEAD
   - DTS.Prover.Wani.Backward
+=======
+>>>>>>> feature/remove_hexpat
   - DTS.Prover.Wani.BackwardRules
   - DTS.Prover.Wani.BackwardWithRules
   - DTS.Prover.Wani.Arrowterm
@@ -96,6 +121,7 @@ executables:
     main:         lightblueMain.hs
     ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
+<<<<<<< HEAD
   collectProofTrees:
     source-dirs:  app
     main:         collectProofTrees.hs
@@ -106,6 +132,8 @@ executables:
     main:         collectTypeCheckTrees.hs
     ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
+=======
+>>>>>>> feature/remove_hexpat
 
 tests:
   testJumanDicSettings:
