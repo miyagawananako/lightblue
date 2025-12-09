@@ -180,6 +180,8 @@ myLexicon :: [Node]
 myLexicon = concat $ [
   -- 格助詞
   -- argument:
+  mylex ["、","，"] "(punct)" PUNCT (id,[]),
+  mylex ["。","．"] "(punct)" PERIOD (id,[]),  
   mylex ["が"] "(524)" ((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Ga]])) `BS` NP [F[Nc]]) argumentCM,
   mylex ["を"] "(524)" ((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[O]])) `BS` NP [F[Nc]]) argumentCM,
   mylex ["に","へ"] "(524)" ((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Ni]])) `BS` NP [F[Nc]]) argumentCM,
@@ -192,7 +194,7 @@ myLexicon = concat $ [
                ((Lam (Lam (Lam (Lamvec (Sigma Entity (Sigma (App (App (Var 3) (Var 0)) terminator) (Sigma (App (App (Con "＃ノ") (Var 5)) (Var 1)) (Appvec 3 (App (Var 4) (Var 2)))))))))) ,[("＃ノ", DTT.Pi DTT.Entity (DTT.Pi DTT.Entity DTT.Type))]),
   -- adjunct:
   mylex ["と","とは","とも","とさえ","とすら"] "(524)+" ((T False 1 modifiableS `SL` T False 1 modifiableS) `BS` NP [F[Nc]]) (adjunctCM "＃ト"),
-  mylex ["へ","へは","へも","へさえ","へと"] "(516)" ((T False 1 modifiableS `SL` T False 1 modifiableS) `BS` NP [F[Nc]]) (adjunctCM "＃へ"), -- 「へと」
+  mylex ["へ","へは","へも","へさえ","へと"] "(516)" ((T False 1 modifiableS `SL` T False 1 modifiableS) `BS` NP [F[Nc]]) (adjunctCM "＃ヘ"), -- 「へと」
   mylex ["で","では","でも","でさえ","ですら","じゃ","じゃあ"] "(516)" ((T False 1 modifiableS `SL` T False 1 modifiableS) `BS` NP [F[Nc]]) (adjunctCM "＃デ"),
   mylex ["から","からは","からも"] "(516)" ((T False 1 modifiableS `SL` T False 1 modifiableS) `BS` NP [F[Nc]]) (adjunctCM "＃カラ"),
   mylex ["まで","までは","までも"] "(516)" ((T False 1 modifiableS `SL` T False 1 modifiableS) `BS` NP [F[Nc]]) (adjunctCM "＃マデ"),
@@ -568,6 +570,7 @@ myLexicon = concat $ [
   --mylex ["どころ"]
   -- 6.1.3 補助動詞（連用形接続）
   mylex ["始め","はじめ"] "(412)" (defS [V1] [Stem,Neg,Cont,ModM,NegL,EuphT] `BS` defS verb [Cont]) (eventModifier "始める"),
+  mylex ["終わ","おわ"] "(412)" (defS [V5r] [Stem,Neg,Cont,ModM,NegL,EuphT] `BS` defS verb [Cont]) (eventModifier "終わる"),
   mylex ["込","こ"] "(412)" (defS [V5m] [Stem] `BS` defS verb [Cont])                         (eventModifier "込む"),
   mylex ["出","だ"] "(412)" (defS [V5s] [Stem] `BS` defS verb [Cont])                         (eventModifier "出す"),
   mylex ["合","あ"] "(412)" (defS [V5w] [Stem] `BS` defS verb [Cont])                         (eventModifier "合う"),
@@ -857,6 +860,11 @@ myLexicon = concat $ [
         ((Lam (Lam (Lamvec (Pi (Sigma Entity (App (App (Var 3) (Var 0)) terminator)) (Appvec 1 (App (Var 2) (Proj Fst (Var 0)))))))),[]),
   mylex ["一人"] "(536)" ((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Nc]])) `BS` N) 
         ((Lam (Lam (Lamvec (Sigma (Sigma Entity (App (App (Var 3) (Var 0)) terminator)) (Appvec 1 (App (Var 2) (Proj Fst (Var 0)))))))),[]),
+  -- 量化表現：Q
+  mylex ["誰も"] "(GQ)" (T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Nc]])) 
+        ((Lam (Lamvec (Pi (Sigma Entity (App (Con "#人") (Var 0))) (Appvec 1 (App (Var 2) (Proj Fst (Var 0))))))),[("#人", DTT.Pi DTT.Entity DTT.Type)]),
+  mylex ["誰か"] "(GQ)" (T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Nc]])) 
+        ((Lam (Lamvec (Sigma (Sigma Entity (App (Con "#人") (Var 0))) (Appvec 1 (App (Var 2) (Proj Fst (Var 0))))))),[("#人", DTT.Pi DTT.Entity DTT.Type)]),
   -- その他GQ
   mylex ["半数以上の","半数の"] "(GQ)" ((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Nc]])) `SL` N) (generalizedQuantifierSR "半数"),  
   mylex ["の半数以上","の半数","半数","半数以上"] "(GQ)" ((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Nc]])) `BS` N) (generalizedQuantifierSR "半数"),  
