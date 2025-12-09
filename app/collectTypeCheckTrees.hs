@@ -53,7 +53,7 @@ main = do
         maxTime = Nothing
         handle = S.stdout
         parseSetting = CP.ParseSetting langOptions beamW nParse nTypeCheck nProof True Nothing noInference verbose
-        prover = NLI.getProver NLI.Wani $ QT.ProofSearchSetting maxDepth maxTime (Just QT.Classical)
+        prover = NLI.getProver NLI.Wani $ QT.defaultProofSearchSetting { QT.maxDepth = maxDepth, QT.maxTime = maxTime, QT.logicSystem = Just QT.Classical }
     parsedJSeM <- J.xml2jsemData $ T.toStrict contents
     parseResults <- forM parsedJSeM $ \j -> do
         let title = "JSeM-ID " ++ (StrictT.unpack $ J.jsem_id j)
