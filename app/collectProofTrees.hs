@@ -38,6 +38,8 @@ import qualified JSeM as JSeM                         --jsem
 import qualified Data.ByteString as B --bytestring
 import Data.Store (encode)
 import Interface.Tree as I
+import qualified DTS.Prover.Wani.Prove as Wani
+import qualified DTS.Prover.Wani.Arrowterm as A
 
 main :: IO()
 main = do
@@ -56,7 +58,8 @@ main = do
         maxTime = Nothing
         handle = S.stdout
         parseSetting = CP.ParseSetting langOptions beamW nParse nTypeCheck nProof True Nothing noInference verbose
-        prover = NLI.getProver NLI.Wani $ QT.ProofSearchSetting maxDepth maxTime (Just QT.Classical)
+        proofSearchSetting = QT.defaultProofSearchSetting { QT.maxDepth = maxDepth, QT.maxTime = maxTime, QT.logicSystem = Just QT.Classical }
+        prover = NLI.getProver NLI.Wani proofSearchSetting
         -- 指定されたJSeM IDのリスト
         targetIds = ["696", "699", "700", "702", "703", "704", "705", "706", "709", "711", "720", "722", "724", "725", "726", "727", "728"]
     parsedJSeM <- J.xml2jsemData $ T.toStrict contents
@@ -69,35 +72,38 @@ main = do
         S.putStr " ==> "
         StrictT.putStrLn $ J.hypothesis j
         let sentences = reverse $ (T.fromStrict $ J.hypothesis j):(map T.fromStrict $ J.premises j)
-        return $ toList $ trawlParseResult $ NLI.parseWithTypeCheck parseSetting prover [("dummy",DTT.Entity)] [] sentences
-    proofDiagrams <- mconcat parseResults
-    mapM_ (T.putStrLn . I.toText) $ take nSample proofDiagrams
-    proofSearchResults <- getProofSearchResult proofDiagrams
-    B.writeFile ("../../wani/neuralWani/data/JSeM_ProofSearchTrees/Verbs"++ (show $ length proofSearchResults) ++ "_" ++ (show $ length (concat proofSearchResults))) (encode proofSearchResults)
+        return $ toList $ trawlParseResultWithArrowTree proofSearchSetting $ NLI.parseWithTypeCheck parseSetting prover [("dummy",DTT.Entity)] [] sentences
+    arrowTrees <- mconcat parseResults
+    mapM_ (T.putStrLn . I.toText . A.aTreeTojTree') $ take nSample arrowTrees
+    proofSearchResults <- mapM makePairFromArrowTree arrowTrees
+    B.writeFile ("../../wani/neuralWani/data/JSeM_ProofSearchTrees/ArrowTerm/Verbs"++ (show $ length proofSearchResults) ++ "_" ++ (show $ length (concat proofSearchResults))) (encode proofSearchResults)
 
-{-- Trawling functions --}
+{-- Trawling functions using prove'WithArrowTree --}
 
-trawlParseResult :: NLI.ParseResult -> ListT IO QT.DTTProofDiagram
-trawlParseResult (NLI.SentenceAndParseTrees _ parseTreeAndFelicityChecks) = do
+-- | prove'WithArrowTree を使って Arrow Tree を取得する trawl 関数
+trawlParseResultWithArrowTree :: QT.ProofSearchSetting -> NLI.ParseResult -> ListT IO (I.Tree A.Arrowrule A.AJudgment)
+trawlParseResultWithArrowTree settings (NLI.SentenceAndParseTrees _ parseTreeAndFelicityChecks) = do
   (NLI.ParseTreeAndFelicityChecks _ _ _ felicityCheckAndMores) <- parseTreeAndFelicityChecks 
   (_, parseResult) <- felicityCheckAndMores
-  trawlParseResult parseResult
-trawlParseResult (NLI.InferenceResults (NLI.QueryAndDiagrams _ resultPos) (NLI.QueryAndDiagrams _ resultNeg)) = mappend resultPos resultNeg
-trawlParseResult NLI.NoSentence = fromFoldable []
+  trawlParseResultWithArrowTree settings parseResult
+trawlParseResultWithArrowTree settings (NLI.InferenceResults (NLI.QueryAndDiagrams psqPos _) (NLI.QueryAndDiagrams psqNeg _)) =
+  -- prove'WithArrowTree を使って Arrow Tree を直接取得
+  let resultPos = Wani.prove'WithArrowTree settings psqPos
+      resultNeg = Wani.prove'WithArrowTree settings psqNeg
+  in mappend resultPos resultNeg
+trawlParseResultWithArrowTree _ NLI.NoSentence = fromFoldable []
 
-getProofSearchResult :: [I.Tree QT.DTTrule DTT.Judgment] -> IO [[(DTT.Judgment, QT.DTTrule)]]
-getProofSearchResult ts = do
-    results <- forM ts makePair
-    return results
+{-- Conversion functions using a2dtJudgment --}
 
-makePair :: I.Tree QT.DTTrule DTT.Judgment -> IO [(DTT.Judgment, QT.DTTrule)]
-makePair resultList = do
-    processTree [] resultList
-    where
-        processTree pairs tree = do
-            let daughters = I.daughters tree
-            let newPair = (I.node tree, I.ruleName tree)
-            let updatedPairs = pairs ++ [newPair]
-            if null daughters
-                then return updatedPairs
-                else foldM processTree updatedPairs daughters
+-- | Arrow Tree から (DTT.Judgment, QT.DTTrule) のペアリストを作成
+-- | a2dtJudgment を使って AJudgment を DTT.Judgment に変換する
+makePairFromArrowTree :: I.Tree A.Arrowrule A.AJudgment -> IO [(DTT.Judgment, QT.DTTrule)]
+makePairFromArrowTree tree = processTree [] tree
+  where
+    processTree pairs t = do
+      -- a2dtJudgment を使って AJudgment を DTT.Judgment に変換
+      let newPair = (A.a2dtJudgment (I.node t), I.ruleName t)
+      let updatedPairs = pairs ++ [newPair]
+      if null (I.daughters t)
+        then return updatedPairs
+        else foldM processTree updatedPairs (I.daughters t)

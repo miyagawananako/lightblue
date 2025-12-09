@@ -3,7 +3,8 @@
 module DTS.Prover.Wani.Prove
 (
   display,
-  prove'
+  prove',
+  prove'WithArrowTree
 ) where
 
 import qualified Interface.Tree as UDT
@@ -88,3 +89,26 @@ prove' QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) =  -- LiftT 
       ioResult = hojo ctx ((A.aEntityName,DdB.Type):sig) typ setting (M.maybe Nothing (\t -> M.Just $ toEnum (t * (10^9))) maxTime)
   in ListT.lift ioResult >>= \result ->
     ListT.fromFoldable (map A.aTreeTojTree' (WB.trees result))
+
+-- | Prover for lightblue (returns Arrowterm trees without conversion to DTT Judgment):
+prove'WithArrowTree :: QT.ProofSearchSetting -> DdB.ProofSearchQuery -> ListT.ListT IO (UDT.Tree A.Arrowrule A.AJudgment)
+prove'WithArrowTree QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) =
+  let setting = WB.Setting {
+        WB.mode = case logicSystem of
+                    Nothing -> WB.Plain
+                    Just QT.Intuitionistic -> WB.WithEFQ
+                    Just QT.Classical -> WB.WithDNE,
+        WB.falsum = True,
+        WB.maxdepth = case maxDepth of
+                        Just n -> n
+                        Nothing -> 9,
+        WB.maxtime = case maxTime of
+                        Just t -> t
+                        Nothing -> 100000,
+        WB.debug = 1,
+        WB.sStatus = WB.statusDef,
+        WB.enableneuralDTS = False
+        };
+      ioResult = hojo ctx ((A.aEntityName,DdB.Type):sig) typ setting (M.maybe Nothing (\t -> M.Just $ toEnum (t * (10^9))) maxTime)
+  in ListT.lift ioResult >>= \result ->
+    ListT.fromFoldable (WB.trees result)
