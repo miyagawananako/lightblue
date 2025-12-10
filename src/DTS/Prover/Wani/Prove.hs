@@ -45,9 +45,12 @@ hojo ::  DdB.Context
   -> IO WB.Result
 hojo varEnv sigEnv pre_type setting timeLimitDiff = 
   let sigEnv' = map (Data.Bifunctor.second A.fromDT2A) sigEnv
-      varEnv' = map A.fromDT2A varEnv
-      arrowType = A.fromDT2A  pre_type
-      result = searchProofWithIncrementalDepth sigEnv' varEnv' arrowType 1 setting timeLimitDiff 1 (let num = WB.maxdepth setting in if num < 0 then M.Nothing else M.Just num)
+  putStrLn $ "sigEnv: " ++ (show sigEnv')
+  let varEnv' = map A.fromDT2A varEnv
+  putStrLn $ "varEnv: " ++ (show varEnv')
+  let arrowType = A.fromDT2A  pre_type
+  putStrLn $ "arrowType: " ++ (show arrowType)
+  let result = searchProofWithIncrementalDepth sigEnv' varEnv' arrowType 1 setting timeLimitDiff 1 (let num = WB.maxdepth setting in if num < 0 then M.Nothing else M.Just num)
   in WB.debugLog (sigEnv',varEnv') arrowType 0 setting "goal" result
 
 searchProof :: WB.DeduceRule
