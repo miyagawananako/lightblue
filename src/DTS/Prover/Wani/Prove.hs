@@ -43,15 +43,15 @@ hojo ::  DdB.Context
   -> WB.Setting
   -> M.Maybe Time.NominalDiffTime
   -> IO WB.Result
-hojo varEnv sigEnv pre_type setting timeLimitDiff = 
+hojo varEnv sigEnv pre_type setting timeLimitDiff = do
   let sigEnv' = map (Data.Bifunctor.second A.fromDT2A) sigEnv
   putStrLn $ "sigEnv: " ++ (show sigEnv')
   let varEnv' = map A.fromDT2A varEnv
   putStrLn $ "varEnv: " ++ (show varEnv')
-  let arrowType = A.fromDT2A  pre_type
+  let arrowType = A.fromDT2A pre_type
   putStrLn $ "arrowType: " ++ (show arrowType)
   let result = searchProofWithIncrementalDepth sigEnv' varEnv' arrowType 1 setting timeLimitDiff 1 (let num = WB.maxdepth setting in if num < 0 then M.Nothing else M.Just num)
-  in WB.debugLog (sigEnv',varEnv') arrowType 0 setting "goal" result
+  WB.debugLog (sigEnv',varEnv') arrowType 0 setting "goal" result
 
 searchProof :: WB.DeduceRule
 searchProof a b c d setting= 
