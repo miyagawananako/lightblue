@@ -6,11 +6,11 @@ category:     CCG Parser + Automatic theorem prover for dependent type theory
 synopsis:     A Japanese CCG parser with DTS
 license:      AllRightsReserved
 license-file: LICENSE
-copyright:    Daisuke Bekki
-author:       Daisuke Bekki and Bekki Laboratory
-maintainer:   Daisuke Bekki
-stability:    beta
-ghc-options:  -Wall
+copyright: Daisuke Bekki
+author: Daisuke Bekki and Bekki Laboratory
+maintainer: Daisuke Bekki
+stability: beta
+ghc-options: -Wall
 
 extra-source-files:
   - README.md
@@ -71,11 +71,12 @@ dependencies:
   - dotenv >= 0.11.0
   - deepseq
   - hasktorch
+  - neuralWani
 
 library:
   source-dirs: src
   default-extensions:
-  - OverloadedStrings
+    - OverloadedStrings
   exposed-modules:
   - Parser.ChartParser
   - Parser.CCG
@@ -121,19 +122,19 @@ library:
 
 executables:
   lightblue:
-    source-dirs:  app
-    main:         lightblueMain.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: app
+    main: lightblueMain.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
 
 tests:
   testJumanDicSettings:
-    source-dirs:  test/Juman
-    main:         testJumanDicSettings.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: test/Juman
+    main: testJumanDicSettings.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
   typeCheck:
-    source-dirs:  test/DTS
-    main:         testTypeChecker.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: test/DTS
+    main: testTypeChecker.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue

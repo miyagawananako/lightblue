@@ -2,6 +2,15 @@ resolver: lts-22.43
 
 flags: {}
 
+extra-include-dirs:
+  - /home/ubuntu/libraries/hasktorch/deps/libtorch/include/torch/csrc/api/include
+  - /home/ubuntu/libraries/hasktorch/deps/libtorch/include
+
+extra-lib-dirs:
+  - /home/ubuntu/libraries/hasktorch/deps/libtorch/lib
+  - /home/ubuntu/libraries/hasktorch/deps/mklml/lib
+  - /home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
+
 extra-deps:
 - git: http://github.com/DaisukeBekki/JSeM
   commit: c2cd39168e267007b4690dbf625329bac57a8185
@@ -39,8 +48,7 @@ build:
   haddock: false
   haddock-arguments:
     haddock-args:
-    - --odir=haddock
+      - --odir=haddock
   open-haddocks: false
   haddock-internal: false
   haddock-hyperlink-source: true
-
