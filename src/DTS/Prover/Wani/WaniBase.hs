@@ -30,6 +30,7 @@ module DTS.Prover.Wani.WaniBase (
     conFromGoal,
     termFromGoal,
     typesFromGoal,
+    goal2NeuralWaniJudgement,
     Rule(..),
     SubGoal(..),
     goalFromSubGoal,
