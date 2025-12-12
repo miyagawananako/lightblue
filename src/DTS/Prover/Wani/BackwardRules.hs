@@ -6,6 +6,7 @@ module DTS.Prover.Wani.BackwardRules
   -- * Rules
   RuleLabel(..),
   rule,
+  label,
   dttruleToRuleLabel
 ) where
 
@@ -93,6 +94,24 @@ rule label =
     DisjIntro -> disjIntro
     DisjElim -> disjElim
     DisjForm -> disjForm
+
+label :: WB.Rule -> RuleLabel
+label rule =
+  case rule of
+    piIntro -> PiIntro
+    piElim -> PiElim
+    piForm -> PiForm
+    sigmaIntro -> SigmaIntro
+    sigmaForm -> SigmaForm
+    eqForm -> EqForm
+    membership -> Membership
+    dne -> Dne
+    efq -> Efq
+    topIntro -> TopIntro
+    askOracle -> AskOracle
+    disjIntro -> DisjIntro
+    disjElim -> DisjElim
+    disjForm -> DisjForm
 
 -- | piIntro rule
 --
