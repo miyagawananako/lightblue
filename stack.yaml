@@ -3,13 +3,15 @@ resolver: lts-22.43
 flags: {}
 
 extra-include-dirs:
-  - /home/ubuntu/libraries/hasktorch/deps/libtorch/include/torch/csrc/api/include
-  - /home/ubuntu/libraries/hasktorch/deps/libtorch/include
+  # - /home/ubuntu/libraries/hasktorch/deps/libtorch/include/torch/csrc/api/include
+  # - /home/ubuntu/libraries/hasktorch/deps/libtorch/include
+  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/include/torch/csrc/api/include
+  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/include
 
 extra-lib-dirs:
-  - /home/ubuntu/libraries/hasktorch/deps/libtorch/lib
-  - /home/ubuntu/libraries/hasktorch/deps/mklml/lib
-  - /home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
+  # - /home/ubuntu/libraries/hasktorch/deps/libtorch/lib
+  # - /home/ubuntu/libraries/hasktorch/deps/mklml/lib
+  # - /home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
 
 extra-deps:
 - git: http://github.com/DaisukeBekki/JSeM
