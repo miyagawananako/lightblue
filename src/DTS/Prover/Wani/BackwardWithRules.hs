@@ -21,6 +21,8 @@ import qualified Debug.Trace as D
 import qualified Data.Maybe as M
 
 import qualified Data.Time.Clock as Time
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
 
 debugLog :: WB.Goal -> WB.Depth -> WB.Setting -> T.Text -> a -> a
 debugLog (WB.Goal sig var maybeTerm proofTypes) depth setting = 
@@ -251,29 +253,42 @@ deduce' goal depth setting
               M.Just (A.Conclusion DdB.Kind) ->
                 return $ WB.debugLogWithTerm (sig,var) (A.Conclusion DdB.Kind) arrowType depth setting "kind cannot be a term."  WB.resultDef{WB.rStatus = WB.mergeStatus (WB.sStatus setting) WB.statusDef{WB.usedMaxDepth = depth}}
               _ -> -- M.Nothing or M.Just term
-                let -- 使用可能な規則のリストを構築
-                    availableRules = 
-                      [BR.PiForm]
-                      ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.Membership,BR.AskOracle,BR.PiIntro,BR.SigmaIntro,BR.PiElim,BR.TopIntro,BR.DisjIntro,BR.DisjElim,BR.DisjForm] else [])
-                      ++ [BR.Dne | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithDNE && (arrowType /= (A.Conclusion DdB.Kind))]
-                      ++ [BR.Efq | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithEFQ && (arrowType /= (A.Conclusion DdB.Kind))]
-                    prioritizedRules = case WB.getPrioritizedRules setting of
-                      M.Just getPrioritizedRules -> getPrioritizedRules goal availableRules
-                      M.Nothing -> availableRules
-                    subgoalsetsIO = sortSubGoalSets $ (ruleResultToSubGoalsets depth $ depth < WB.debug setting) $ sequence $ 
-                      map
-                        (\ruleLabel -> BR.rule ruleLabel goal setting)
-                        prioritizedRules
-                    resultIO = 
-                        let resultDef = -- update `deduceNgLst` and `failedlst` to be used in deeper search
-                                WB.resultDef{WB.rStatus = WB.mergeStatus (WB.sStatus setting) (WB.statusDef{WB.usedMaxDepth = depth,WB.deduceNgLst = ((sig,var),arrowType) : (WB.deduceNgLst $WB.sStatus setting),WB.failedlst = maybe (WB.failedlst $WB.sStatus setting) (\arrowTerm -> (((sig,var),arrowTerm,arrowType) : (WB.failedlst $WB.sStatus setting))) justTerm})} -- Currently, `arrowType` proof search is performed under environment `con`, and to prevent infinite loops, it is set to round up when `arrowType` proof search is needed under environment `con`(★).
-                        in subgoalsetsIO >>= \subgoalsets -> deduceWithSubGoalsets subgoalsets (depth+1) setting resultDef justTerm arrowType
-                in resultIO >>= \result ->
+                do
+                  -- 使用可能な規則のリストを構築
+                  let availableRules = 
+                        [BR.PiForm]
+                        ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.Membership,BR.AskOracle,BR.PiIntro,BR.SigmaIntro,BR.PiElim,BR.TopIntro,BR.DisjIntro,BR.DisjElim,BR.DisjForm] else [])
+                        ++ [BR.Dne | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithDNE && (arrowType /= (A.Conclusion DdB.Kind))]
+                        ++ [BR.Efq | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithEFQ && (arrowType /= (A.Conclusion DdB.Kind))]
+                  
+                  -- NeuralWaniの推論時間を計測し、その分timeLimit を延長する
+                  (prioritizedRules, adjustedSetting) <- case WB.getPrioritizedRules setting of
+                    M.Just getPrioritizedRulesFunc -> do
+                      beforePrediction <- Time.getCurrentTime
+                      let rules = getPrioritizedRulesFunc goal availableRules
+                      -- 即時評価を強制（リスト全体を完全に評価）
+                      evaluatedRules <- evaluate (force rules)
+                      afterPrediction <- Time.getCurrentTime
+                      let predictionTime = Time.diffUTCTime afterPrediction beforePrediction
+                          -- timeLimitを推論時間分延長
+                          adjustedTimeLimit = fmap (Time.addUTCTime predictionTime) (WB.timeLimit setting)
+                      return (evaluatedRules, setting{WB.timeLimit = adjustedTimeLimit})
+                    M.Nothing -> return (availableRules, setting)
+                  
+                  let subgoalsetsIO = sortSubGoalSets $ (ruleResultToSubGoalsets depth $ depth < WB.debug adjustedSetting) $ sequence $ 
+                        map
+                          (\ruleLabel -> BR.rule ruleLabel goal adjustedSetting)
+                          prioritizedRules
+                      resultIO = 
+                          let resultDef = -- update `deduceNgLst` and `failedlst` to be used in deeper search
+                                  WB.resultDef{WB.rStatus = WB.mergeStatus (WB.sStatus adjustedSetting) (WB.statusDef{WB.usedMaxDepth = depth,WB.deduceNgLst = ((sig,var),arrowType) : (WB.deduceNgLst $WB.sStatus adjustedSetting),WB.failedlst = maybe (WB.failedlst $WB.sStatus adjustedSetting) (\arrowTerm -> (((sig,var),arrowTerm,arrowType) : (WB.failedlst $WB.sStatus adjustedSetting))) justTerm})} -- Currently, `arrowType` proof search is performed under environment `con`, and to prevent infinite loops, it is set to round up when `arrowType` proof search is needed under environment `con`(★).
+                          in subgoalsetsIO >>= \subgoalsets -> deduceWithSubGoalsets subgoalsets (depth+1) adjustedSetting resultDef justTerm arrowType
+                  result <- resultIO
                   if null (WB.trees result)
                     then
-                      return $ (if depth < WB.debug setting then WB.debugLog (sig,var) arrowType depth setting "deduce failed " else id) result{WB.rStatus = (WB.rStatus result){WB.failedlst = maybe (WB.failedlst $WB.sStatus setting) (\arrowTerm -> (((sig,var),arrowTerm,arrowType) : (WB.failedlst $WB.sStatus setting))) justTerm}}
+                      return $ (if depth < WB.debug adjustedSetting then WB.debugLog (sig,var) arrowType depth adjustedSetting "deduce failed " else id) result{WB.rStatus = (WB.rStatus result){WB.failedlst = maybe (WB.failedlst $WB.sStatus adjustedSetting) (\arrowTerm -> (((sig,var),arrowTerm,arrowType) : (WB.failedlst $WB.sStatus adjustedSetting))) justTerm}}
                     else
-                      return $ (if depth < WB.debug setting then D.trace (L.replicate (2*depth) ' ' ++  show depth ++ " deduced:  " ++ show (map A.downSide' (WB.trees result))) else id) result
+                      return $ (if depth < WB.debug adjustedSetting then D.trace (L.replicate (2*depth) ' ' ++  show depth ++ " deduced:  " ++ show (map A.downSide' (WB.trees result))) else id) result
 
 -- | deduce
 -- | summary : deduce' wrapper

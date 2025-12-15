@@ -27,6 +27,7 @@ import qualified Debug.Trace as D
 import qualified Control.Monad as CM
 import qualified GHC.Generics as G
 import Data.Store (Store(..))
+import Control.DeepSeq (NFData)
 
 data RuleLabel =  
   PiIntro |
@@ -43,7 +44,7 @@ data RuleLabel =
   DisjIntro |
   DisjElim |
   DisjForm
-  deriving (Eq, Show, Read, G.Generic, Store, Enum, Bounded, Ord)
+  deriving (Eq, Show, Read, G.Generic, Store, Enum, Bounded, Ord, NFData)
 
 dttruleToRuleLabel :: QT.DTTrule -> Maybe RuleLabel
 dttruleToRuleLabel rule = case rule of
