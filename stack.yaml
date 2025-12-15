@@ -2,7 +2,6 @@ resolver: lts-20.26
 
 packages:
   - .
-  - /Users/miyagawananako/wani/neuralWani
 
 flags: {}
 
@@ -16,6 +15,9 @@ extra-lib-dirs:
   # - /home/ubuntu/libraries/hasktorch/deps/libtorch/lib
   # - /home/ubuntu/libraries/hasktorch/deps/mklml/lib
   # - /home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
+  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/lib
+  - /home/nanacom/.local/lib/hasktorch/deps/mklml/lib
+  - /home/nanacom/.local/lib/hasktorch/deps/libtokenizers/lib
 
 extra-deps:
   - git: http://github.com/DaisukeBekki/JSeM
@@ -25,9 +27,6 @@ extra-deps:
   # parserModule
   - git: https://github.com/morning85/parserModules.git
     commit: 899aae39b8c57866148fb3b19a4ac2f393ffaabd
-  # waniTEST
-  - git: git@github.com:hinarid/waniTest.git
-    commit: 6962393b76b4ebfa8fc5b1018678d2abfcf206e1
   # hasktorch関連
   # - /home/ubuntu/libraries/hasktorch/codegen
   # - /home/ubuntu/libraries/hasktorch/libtorch-ffi
