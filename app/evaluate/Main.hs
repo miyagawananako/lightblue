@@ -104,11 +104,123 @@ main = do
   putStrLn ""
 
   -- data/TPTP/ 配下のサブディレクトリからファイルを取得
-  -- fofFilesWithSubDir <- fmap concat $ mapM getFilesFromSubDir targetSubDirs
+  fofFilesWithSubDir <- fmap concat $ mapM getFilesFromSubDir targetSubDirs
   
-  -- let fofFiles = sort fofFilesWithSubDir
+  -- 除外するファイルリスト
+  let excludeFiles = 
+        [ "SYN000+2.p"
+        , "SYN007+1.014.p"
+        , "SYN036+1.p"
+        , "SYN418+1.p"
+        , "SYN419+1.p"
+        , "SYN420+1.p"
+        , "SYN421+1.p"
+        , "SYN422+1.p"
+        , "SYN423+1.p"
+        , "SYN424+1.p"
+        , "SYN425+1.p"
+        , "SYN426+1.p"
+        , "SYN427+1.p"
+        , "SYN428+1.p"
+        , "SYN429+1.p"
+        , "SYN430+1.p"
+        , "SYN431+1.p"
+        , "SYN432+1.p"
+        , "SYN433+1.p"
+        , "SYN434+1.p"
+        , "SYN435+1.p"
+        , "SYN436+1.p"
+        , "SYN437+1.p"
+        , "SYN438+1.p"
+        , "SYN439+1.p"
+        , "SYN440+1.p"
+        , "SYN441+1.p"
+        , "SYN442+1.p"
+        , "SYN443+1.p"
+        , "SYN444+1.p"
+        , "SYN445+1.p"
+        , "SYN446+1.p"
+        , "SYN447+1.p"
+        , "SYN448+1.p"
+        , "SYN449+1.p"
+        , "SYN450+1.p"
+        , "SYN451+1.p"
+        , "SYN452+1.p"
+        , "SYN453+1.p"
+        , "SYN454+1.p"
+        , "SYN455+1.p"
+        , "SYN456+1.p"
+        , "SYN457+1.p"
+        , "SYN458+1.p"
+        , "SYN459+1.p"
+        , "SYN460+1.p"
+        , "SYN461+1.p"
+        , "SYN462+1.p"
+        , "SYN463+1.p"
+        , "SYN464+1.p"
+        , "SYN465+1.p"
+        , "SYN466+1.p"
+        , "SYN467+1.p"
+        , "SYN468+1.p"
+        , "SYN469+1.p"
+        , "SYN470+1.p"
+        , "SYN471+1.p"
+        , "SYN472+1.p"
+        , "SYN473+1.p"
+        , "SYN474+1.p"
+        , "SYN475+1.p"
+        , "SYN476+1.p"
+        , "SYN477+1.p"
+        , "SYN478+1.p"
+        , "SYN479+1.p"
+        , "SYN480+1.p"
+        , "SYN481+1.p"
+        , "SYN482+1.p"
+        , "SYN483+1.p"
+        , "SYN484+1.p"
+        , "SYN485+1.p"
+        , "SYN486+1.p"
+        , "SYN487+1.p"
+        , "SYN488+1.p"
+        , "SYN489+1.p"
+        , "SYN495+1.p"
+        , "SYN498+1.p"
+        , "SYN499+1.p"
+        , "SYN500+1.p"
+        , "SYN501+1.p"
+        , "SYN502+1.p"
+        , "SYN503+1.p"
+        , "SYN504+1.p"
+        , "SYN505+1.p"
+        , "SYN506+1.p"
+        , "SYN507+1.p"
+        , "SYN508+1.p"
+        , "SYN509+1.p"
+        , "SYN510+1.p"
+        , "SYN511+1.p"
+        , "SYN512+1.p"
+        , "SYN513+1.p"
+        , "SYN514+1.p"
+        , "SYN518+1.p"
+        , "SYN519+1.p"
+        , "SYN520+1.p"
+        , "SYN537+1.p"
+        , "SYN538+1.p"
+        , "SYN539+1.p"
+        , "SYN540+1.p"
+        , "SYN541+1.p"
+        , "SYN542+1.p"
+        , "SYN543+1.p"
+        , "SYN544+1.p"
+        , "SYN545+1.p"
+        , "SYN546+1.p"
+        , "SYN547+1.p"
+        , "SYN938+1.p"
+        ]
+  
+  let fofFiles = sort $ filter (\(_, f) -> f `notElem` excludeFiles) fofFilesWithSubDir
   -- let fofFiles = [("SYN", "SYN950+1.p"), ("SYN", "SYN952+1.p"), ("SYN", "SYN958+1.p")]
-  let fofFiles = [("SYN", "SYN007+1.014.p")]
+  -- let fofFiles = [("SYN", "SYN007+1.014.p")]
   
   -- Found 376 FOF files (with '+' in filename)！！
   putStrLn $ "Found " ++ show (length fofFiles) ++ " FOF files (with '+' in filename)"
@@ -205,12 +317,12 @@ processOneFile config sessionId (subDir, filename) = do
                 QT.maxTime = Just (cfgMaxTime config)
                 }
 
-      -- getPrioritizedRules <- neuralWaniBuilder
+      getPrioritizedRules <- neuralWaniBuilder
       -- NeuralWani用の設定（将来的にニューラルネットワークを有効化）
       let neuralSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
-                QT.maxTime = Just (cfgMaxTime config)
-                -- QT.neuralWani = Just getPrioritizedRules
+                QT.maxTime = Just (cfgMaxTime config),
+                QT.neuralWani = Just getPrioritizedRules
                 }
       
       -- 期待される結果（StatusからResultに変換）
