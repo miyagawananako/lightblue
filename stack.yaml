@@ -12,6 +12,9 @@ extra-lib-dirs:
   # - /home/ubuntu/libraries/hasktorch/deps/libtorch/lib
   # - /home/ubuntu/libraries/hasktorch/deps/mklml/lib
   # - /home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
+  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/lib
+  - /home/nanacom/.local/lib/hasktorch/deps/mklml/lib
+  - /home/nanacom/.local/lib/hasktorch/deps/libtokenizers/lib
 
 extra-deps:
 - git: http://github.com/DaisukeBekki/JSeM

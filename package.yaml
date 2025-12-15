@@ -71,7 +71,7 @@ dependencies:
   - dotenv >= 0.11.0
   - deepseq
   - hasktorch
-  - neuralWani
+  - hasktorch-tools
 
 library:
   source-dirs: src
@@ -119,6 +119,9 @@ library:
   - DTS.Prover.Wani.BackwardWithRules
   - DTS.Prover.Wani.Arrowterm
   - DTS.Prover.Wani.Prove
+  - NeuralWani.Builder
+  - NeuralWani.Forward
+  - NeuralWani.SplitJudgment
 
 executables:
   lightblue:
@@ -126,6 +129,14 @@ executables:
     main: lightblueMain.hs
     ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
+
+  builder-exe:
+    source-dirs: app/builder
+    main: Main.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    dependencies:
+      - lightblue
+      - text
 
 tests:
   testJumanDicSettings:
