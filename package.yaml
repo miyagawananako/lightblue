@@ -1,16 +1,16 @@
-name:         lightblue
-version:      0.4.1
-description:  Please see the README on GitHub at <https://github.com/DaisukeBekki/lightblue#README.md>
-homepage:     https://github.com/DaisukeBekki/lightblue
-category:     CCG Parser, Dependent Type Prover
-synopsis:     A Japanese CCG parser with DTS
-license:      AllRightsReserved
+name: lightblue
+version: 0.4.1
+description: Please see the README on GitHub at <https://github.com/DaisukeBekki/lightblue#README.md>
+homepage: https://github.com/DaisukeBekki/lightblue
+category: CCG Parser, Dependent Type Prover
+synopsis: A Japanese CCG parser with DTS
+license: AllRightsReserved
 license-file: LICENSE
-copyright:    Daisuke Bekki
-author:       Daisuke Bekki and Bekki Laboratory
-maintainer:   Daisuke Bekki
-stability:    beta
-ghc-options:  -Wall
+copyright: Daisuke Bekki
+author: Daisuke Bekki and Bekki Laboratory
+maintainer: Daisuke Bekki
+stability: beta
+ghc-options: -Wall
 
 extra-source-files:
   - README.md
@@ -52,68 +52,100 @@ dependencies:
   - http-client-tls >= 0.3.5
   - dotenv >= 0.0.4
   - deepseq
+  - hasktorch >= 0.2
+  - hasktorch-tools
 
 library:
   source-dirs: src
   default-extensions:
-  - OverloadedStrings
+    - OverloadedStrings
+  build-tools:
+    - alex
+    - happy
   exposed-modules:
-  - Parser.ChartParser
-  - Parser.CCG
-  - Parser.PartialParsing
-  - Parser.Language
-  - Parser.LangOptions
-  - Parser.Language.Japanese.Lexicon
-  - Parser.Language.Japanese.MyLexicon
-  - Parser.Language.Japanese.Templates
-  - Parser.Language.Japanese.Juman.CallJuman
-  - Parser.Language.Japanese.Juman.Config
-  - Parser.Language.Japanese.Juman.ParseJumanDic
-  - Parser.Language.Japanese.Juman.ConvertJumanDic
-  - Parser.Language.Japanese.Filter
-  - Parser.Language.Japanese.Filter.KNPFilter
-  - Parser.Language.Japanese.Filter.KWJAFilter
-  - Parser.Language.English.Lexicon
-  - Interface
-  - Interface.Text
-  - Interface.TeX
-  - Interface.XML
-  - Interface.HTML
-  - Interface.SVG
-  - Interface.Tree
-  - Interface.PrintParseResult
-  - DTS.Index
-  - DTS.GeneralTypeQuery
-  - DTS.UDTTdeBruijn
-  - DTS.UDTTwithName
-  - DTS.DTTdeBruijn
-  - DTS.DTTwithName
-  - DTS.QueryTypes
-  - DTS.TypeChecker
-  - DTS.NaturalLanguageInference
-  - DTS.Prover.Oracle
-  - DTS.Prover.Wani.WaniBase
-  - DTS.Prover.Wani.Forward
-  - DTS.Prover.Wani.BackwardRules
-  - DTS.Prover.Wani.BackwardWithRules
-  - DTS.Prover.Wani.Arrowterm
-  - DTS.Prover.Wani.Prove
+    - Parser.ChartParser
+    - Parser.CCG
+    - Parser.PartialParsing
+    - Parser.Language
+    - Parser.LangOptions
+    - Parser.Language.Japanese.Lexicon
+    - Parser.Language.Japanese.MyLexicon
+    - Parser.Language.Japanese.Templates
+    - Parser.Language.Japanese.Juman.CallJuman
+    - Parser.Language.Japanese.Juman.Config
+    - Parser.Language.Japanese.Juman.ParseJumanDic
+    - Parser.Language.Japanese.Juman.ConvertJumanDic
+    - Parser.Language.Japanese.Filter
+    - Parser.Language.Japanese.Filter.KNPFilter
+    - Parser.Language.Japanese.Filter.KWJAFilter
+    - Parser.Language.English.Lexicon
+    - Interface
+    - Interface.Text
+    - Interface.TeX
+    - Interface.XML
+    - Interface.HTML
+    - Interface.SVG
+    - Interface.Tree
+    - Interface.PrintParseResult
+    - DTS.Index
+    - DTS.GeneralTypeQuery
+    - DTS.UDTTdeBruijn
+    - DTS.UDTTwithName
+    - DTS.DTTdeBruijn
+    - DTS.DTTwithName
+    - DTS.QueryTypes
+    - DTS.TypeChecker
+    - DTS.NaturalLanguageInference
+    - DTS.Prover.Oracle
+    - DTS.Prover.Wani.WaniBase
+    - DTS.Prover.Wani.Forward
+    - DTS.Prover.Wani.BackwardRules
+    - DTS.Prover.Wani.BackwardWithRules
+    - DTS.Prover.Wani.Arrowterm
+    - DTS.Prover.Wani.Prove
+    - NeuralWani.Builder
+    - NeuralWani.Forward
+    - NeuralWani.SplitJudgment
+    - TPTP.Syntax
+    - TPTP.FormulaSyntax
+    - TPTP.Lexer
+    - TPTP.Parser
+    - TPTP.FormulaLexer
+    - TPTP.FormulaParser
+    - TPTP.Convert
+    - TPTPInfo
 
 executables:
   lightblue:
-    source-dirs:  app
-    main:         lightblueMain.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: app
+    main: lightblueMain.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
+
+  builder-exe:
+    source-dirs: app/builder
+    main: Main.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    dependencies:
+      - lightblue
+      - text
+
+  evaluate-exe:
+    source-dirs: app/evaluate
+    main: Main.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    dependencies:
+      - lightblue
+      - text
 
 tests:
   testJumanDicSettings:
-    source-dirs:  test/Juman
-    main:         testJumanDicSettings.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: test/Juman
+    main: testJumanDicSettings.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
   typeCheck:
-    source-dirs:  test/DTS
-    main:         testTypeChecker.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: test/DTS
+    main: testTypeChecker.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
