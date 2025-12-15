@@ -77,6 +77,9 @@ library:
   source-dirs: src
   default-extensions:
     - OverloadedStrings
+  build-tools:
+    - alex
+    - happy
   exposed-modules:
   - Parser.ChartParser
   - Parser.CCG
@@ -122,6 +125,14 @@ library:
   - NeuralWani.Builder
   - NeuralWani.Forward
   - NeuralWani.SplitJudgment
+  - TPTP.Syntax
+  - TPTP.FormulaSyntax
+  - TPTP.Lexer
+  - TPTP.Parser
+  - TPTP.FormulaLexer
+  - TPTP.FormulaParser
+  - TPTP.Convert
+  - TPTPInfo
 
 executables:
   lightblue:
@@ -132,6 +143,14 @@ executables:
 
   builder-exe:
     source-dirs: app/builder
+    main: Main.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    dependencies:
+      - lightblue
+      - text
+
+  evaluate-exe:
+    source-dirs: app/evaluate
     main: Main.hs
     ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies:
