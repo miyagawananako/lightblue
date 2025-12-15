@@ -25,7 +25,7 @@ goalExample = WB.Goal
 --                         )
 
 availableRules :: [BR.RuleLabel]
-availableRules = [BR.Membership,BR.AskOracle,BR.PiIntro,BR.SigmaIntro,BR.PiElim,BR.TopIntro,BR.DisjIntro,BR.DisjElim,BR.Dne,BR.Efq]
+availableRules = [BR.PiForm,BR.SigmaForm,BR.EqForm,BR.Membership,BR.AskOracle,BR.PiIntro,BR.SigmaIntro,BR.PiElim,BR.TopIntro,BR.DisjIntro,BR.DisjElim,BR.DisjForm,BR.Dne,BR.Efq]
 
 main :: IO ()
 main = do

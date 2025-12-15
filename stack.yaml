@@ -35,6 +35,8 @@ extra-deps:
 # parserModule
 - git: https://github.com/morning85/parserModules.git
   commit: 899aae39b8c57866148fb3b19a4ac2f393ffaabd
+- git: http://github.com/DaisukeBekki/hasktorch-tools.git
+    commit: 3f589a6eaf158df972bac922feda22b76f4ab82b
 
 ghc-options:
   libtorch-ffi: -optcxx-Wno-error=stringop-overflow

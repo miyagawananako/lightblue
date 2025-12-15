@@ -295,10 +295,10 @@ processOneFile config sessionId (subDir, filename) = do
     then do
       putStrLn $ "=== File: " ++ subDir </> filename ++ " ==="
       putStrLn $ "Error: " ++ intercalate ", " errors
-      return $ Left SkippedFile
+      return $ Left (SkippedFile
         { sfFilename = filenameText
         , sfReason   = T.pack $ intercalate ", " errors
-        }
+        })
     else do
       let t    = fromJust target
           st   = fromJust status
@@ -408,29 +408,20 @@ processOneFile config sessionId (subDir, filename) = do
       putStrLn ""
       
       let evalResult = EvalResult
-        { erFilename     = filenameText
-        , erExpected     = expectedResult
-        , erNormalResult = normalResult
-        , erNormalTime   = normalTime
-        , erNeuralResult = neuralResult
-        , erNeuralTime   = neuralTime
-        , erNormalMatch  = normalMatch
-        , erNeuralMatch  = neuralMatch
-        }
-      
+            { erFilename     = filenameText
+            , erExpected     = expectedResult
+            , erNormalResult = normalResult
+            , erNormalTime   = normalTime
+            , erNeuralResult = neuralResult
+            , erNeuralTime   = neuralTime
+            , erNormalMatch  = normalMatch
+            , erNeuralMatch  = neuralMatch
+            }
+          
       -- 各ファイル処理完了後にTeX形式で比較データを出力
       writePerFileTexReport config sessionId baseName evalResult
       
       return $ Right evalResult
-        { erFilename     = filenameText
-        , erExpected     = expectedResult
-        , erNormalResult = normalResult
-        , erNormalTime   = normalTime
-        , erNeuralResult = neuralResult
-        , erNeuralTime   = neuralTime
-        , erNormalMatch  = normalMatch
-        , erNeuralMatch  = neuralMatch
-        }
 
 -- | 期待値との比較結果を表示する
 printMatchResult :: Bool -> Maybe TI.Result -> TI.Result -> IO ()
