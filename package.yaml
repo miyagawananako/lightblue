@@ -1,10 +1,10 @@
-name: lightblue
-version: 0.4.1
-description: Please see the README on GitHub at <https://github.com/DaisukeBekki/lightblue#README.md>
-homepage: https://github.com/DaisukeBekki/lightblue
-category: CCG Parser, Dependent Type Prover
-synopsis: A Japanese CCG parser with DTS
-license: AllRightsReserved
+name:         lightblue
+version:      0.5.0.0
+description:  Please see the README on GitHub at <https://github.com/DaisukeBekki/lightblue#README.md>
+homepage:     https://github.com/DaisukeBekki/lightblue
+category:     CCG Parser, Dependent Type Prover
+synopsis:     A Japanese CCG parser with DTS
+license:      AllRightsReserved
 license-file: LICENSE
 copyright: Daisuke Bekki
 author: Daisuke Bekki and Bekki Laboratory
@@ -47,6 +47,24 @@ dependencies:
   - parserModules
   - unicode-show >= 0.1
   - parallel >= 3.2.2
+  - yesod >= 1.6
+  - yesod-core >= 1.6 && <1.7
+  - yesod-static >= 1.6 && <1.7
+  - yesod-form >= 1.6 && <1.8
+  - classy-prelude >= 1.5 && <1.6
+  - classy-prelude-conduit >=1.5 && <1.6
+  - classy-prelude-yesod >=1.5 && <1.6
+  - file-embed
+  - template-haskell
+  - warp
+  - monad-logger >=0.3 && <0.4
+  - shakespeare >=2.0 && <2.1
+  - hjsmin >=0.1 && <0.3
+  - case-insensitive
+  - http-client-tls
+  - wai
+  - wai-extra
+  - fast-logger
   - transformers >= 0.5.6.2
   - http-conduit >= 2.3.7
   - http-client-tls >= 0.3.5
@@ -64,63 +82,64 @@ library:
     - alex
     - happy
   exposed-modules:
-    - Parser.ChartParser
-    - Parser.CCG
-    - Parser.PartialParsing
-    - Parser.Language
-    - Parser.LangOptions
-    - Parser.Language.Japanese.Lexicon
-    - Parser.Language.Japanese.MyLexicon
-    - Parser.Language.Japanese.Templates
-    - Parser.Language.Japanese.Juman.CallJuman
-    - Parser.Language.Japanese.Juman.Config
-    - Parser.Language.Japanese.Juman.ParseJumanDic
-    - Parser.Language.Japanese.Juman.ConvertJumanDic
-    - Parser.Language.Japanese.Filter
-    - Parser.Language.Japanese.Filter.KNPFilter
-    - Parser.Language.Japanese.Filter.KWJAFilter
-    - Parser.Language.English.Lexicon
-    - Interface
-    - Interface.Text
-    - Interface.TeX
-    - Interface.XML
-    - Interface.HTML
-    - Interface.SVG
-    - Interface.Tree
-    - Interface.PrintParseResult
-    - DTS.Index
-    - DTS.GeneralTypeQuery
-    - DTS.UDTTdeBruijn
-    - DTS.UDTTwithName
-    - DTS.DTTdeBruijn
-    - DTS.DTTwithName
-    - DTS.QueryTypes
-    - DTS.TypeChecker
-    - DTS.NaturalLanguageInference
-    - DTS.Prover.Oracle
-    - DTS.Prover.Wani.WaniBase
-    - DTS.Prover.Wani.Forward
-    - DTS.Prover.Wani.BackwardRules
-    - DTS.Prover.Wani.BackwardWithRules
-    - DTS.Prover.Wani.Arrowterm
-    - DTS.Prover.Wani.Prove
-    - NeuralWani.Builder
-    - NeuralWani.Forward
-    - NeuralWani.SplitJudgment
-    - TPTP.Syntax
-    - TPTP.FormulaSyntax
-    - TPTP.Lexer
-    - TPTP.Parser
-    - TPTP.FormulaLexer
-    - TPTP.FormulaParser
-    - TPTP.Convert
-    - TPTPInfo
+  - Parser.ChartParser
+  - Parser.CCG
+  - Parser.PartialParsing
+  - Parser.Language
+  - Parser.LangOptions
+  - Parser.Language.Japanese.Lexicon
+  - Parser.Language.Japanese.MyLexicon
+  - Parser.Language.Japanese.Templates
+  - Parser.Language.Japanese.Juman.CallJuman
+  - Parser.Language.Japanese.Juman.Config
+  - Parser.Language.Japanese.Juman.ParseJumanDic
+  - Parser.Language.Japanese.Juman.ConvertJumanDic
+  - Parser.Language.Japanese.Filter
+  - Parser.Language.Japanese.Filter.KNPFilter
+  - Parser.Language.Japanese.Filter.KWJAFilter
+  - Parser.Language.English.Lexicon
+  - Interface
+  - Interface.Text
+  - Interface.TeX
+  - Interface.XML
+  - Interface.HTML
+  - Interface.Express.Express
+  - Interface.SVG
+  - Interface.Tree
+  - Interface.PrintParseResult
+  - DTS.Index
+  - DTS.GeneralTypeQuery
+  - DTS.UDTTdeBruijn
+  - DTS.UDTTwithName
+  - DTS.DTTdeBruijn
+  - DTS.DTTwithName
+  - DTS.QueryTypes
+  - DTS.TypeChecker
+  - DTS.NaturalLanguageInference
+  - DTS.Prover.Oracle
+  - DTS.Prover.Wani.WaniBase
+  - DTS.Prover.Wani.Forward
+  - DTS.Prover.Wani.BackwardRules
+  - DTS.Prover.Wani.BackwardWithRules
+  - DTS.Prover.Wani.Arrowterm
+  - DTS.Prover.Wani.Prove
+  - NeuralWani.Builder
+  - NeuralWani.Forward
+  - NeuralWani.SplitJudgment
+  - TPTP.Syntax
+  - TPTP.FormulaSyntax
+  - TPTP.Lexer
+  - TPTP.Parser
+  - TPTP.FormulaLexer
+  - TPTP.FormulaParser
+  - TPTP.Convert
+  - TPTPInfo
 
 executables:
   lightblue:
-    source-dirs: app
-    main: lightblueMain.hs
-    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs:  app
+    main:         lightblueMain.hs
+    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
 
   builder-exe:

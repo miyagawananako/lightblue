@@ -20,45 +20,46 @@ extra-lib-dirs:
   - /home/nanacom/.local/lib/hasktorch/deps/libtokenizers/lib
 
 extra-deps:
-  - git: http://github.com/DaisukeBekki/JSeM
-    commit: c2cd39168e267007b4690dbf625329bac57a8185
-  - git: http://github.com/DaisukeBekki/nlp-tools
-    commit: e4bd3783f4e872b8df29538d9219e41f40378363
-  # parserModule
-  - git: https://github.com/morning85/parserModules.git
-    commit: 899aae39b8c57866148fb3b19a4ac2f393ffaabd
-  # hasktorch関連
-  # - /home/ubuntu/libraries/hasktorch/codegen
-  # - /home/ubuntu/libraries/hasktorch/libtorch-ffi
-  # - /home/ubuntu/libraries/hasktorch/libtorch-ffi-helper
-  # - /home/ubuntu/libraries/hasktorch/hasktorch
-  - /home/nanacom/.local/lib/hasktorch/codegen
-  - /home/nanacom/.local/lib/hasktorch/libtorch-ffi
-  - /home/nanacom/.local/lib/hasktorch/libtorch-ffi-helper
-  - /home/nanacom/.local/lib/hasktorch/hasktorch
-  - datasets-0.4.0@sha256:9bfd5b54c6c5e1e72384a890cf29bf85a02007e0a31c98753f7d225be3c7fa6a,4929
-  - require-0.4.10@sha256:41b096daaca0d6be49239add1149af9f34c84640d09a7ffa9b45c55f089b5dac,3759
-  - indexed-extras-0.2@sha256:e7e498023e33016fe45467dfee3c1379862e7e6654a806a965958fa1adc00304,1349
-  - normaldistribution-1.1.0.3@sha256:2615b784c4112cbf6ffa0e2b55b76790290a9b9dff18a05d8c89aa374b213477,2160
-  - term-rewriting-0.4.0.2@sha256:5412f6aa29c5756634ee30e8df923c83ab9f012a4b8797c460af3d7078466764,2740
-  - git: https://github.com/hasktorch/tintin
-    commit: 0d5afba586da01e0a54e598745676c5c56189178
-  - git: https://github.com/hasktorch/tokenizers
-    commit: 9d25f0ba303193e97f8b22b9c93cbc84725886c3
-    subdirs:
-      - bindings/haskell/tokenizers-haskell
-  - git: https://github.com/hasktorch/typelevel-rewrite-rules
-    commit: 4176e10d4de2d1310506c0fcf6a74956d81d59b6
-  - git: https://github.com/hasktorch/type-errors-pretty
-    commit: 32d7abec6a21c42a5f960d7f4133d604e8be79ec
-  - union-find-array-0.1.0.3@sha256:242e066ec516d61f262947e5794edc7bbc11fd538a0415c03ac0c01b028cfa8a,1372
-  - clay-0.14.0@sha256:382eced24317f9ed0f7a0a4789cdfc6fc8dd32895cdb0c4ea50a1613bee08af3,2128
-  - inline-c-0.9.1.10
-  - inline-c-cpp-0.5.0.2
-  - git: http://github.com/DaisukeBekki/hasktorch-tools.git
-    commit: 3f589a6eaf158df972bac922feda22b76f4ab82b
-  # - random-shuffle-0.0.4@sha256:e5fa568cea36d57eb8ec93da2a8880ea60e96d95b73a17e0099bf5e60a1e0324,1173
-  # - cereal-text-0.1.0.2@sha256:f69c9ceb8442e8cdcd3c638a8a0fe3fb13aa0cecc6ca033edc8e43a9b4c42645,940
+- git: http://github.com/DaisukeBekki/JSeM
+  commit: c2cd39168e267007b4690dbf625329bac57a8185
+- git: http://github.com/DaisukeBekki/nlp-tools
+  commit: e4bd3783f4e872b8df29538d9219e41f40378363
+# parserModule
+- git: https://github.com/morning85/parserModules.git
+  commit: 899aae39b8c57866148fb3b19a4ac2f393ffaabd
+# hasktorch関連
+# - /home/ubuntu/libraries/hasktorch/codegen
+# - /home/ubuntu/libraries/hasktorch/libtorch-ffi
+# - /home/ubuntu/libraries/hasktorch/libtorch-ffi-helper
+# - /home/ubuntu/libraries/hasktorch/hasktorch
+- /home/nanacom/.local/lib/hasktorch/codegen
+- /home/nanacom/.local/lib/hasktorch/libtorch-ffi
+- /home/nanacom/.local/lib/hasktorch/libtorch-ffi-helper
+- /home/nanacom/.local/lib/hasktorch/hasktorch
+- datasets-0.4.0@sha256:9bfd5b54c6c5e1e72384a890cf29bf85a02007e0a31c98753f7d225be3c7fa6a,4929
+- require-0.4.10@sha256:41b096daaca0d6be49239add1149af9f34c84640d09a7ffa9b45c55f089b5dac,3759
+- indexed-extras-0.2@sha256:e7e498023e33016fe45467dfee3c1379862e7e6654a806a965958fa1adc00304,1349
+- normaldistribution-1.1.0.3@sha256:2615b784c4112cbf6ffa0e2b55b76790290a9b9dff18a05d8c89aa374b213477,2160
+- term-rewriting-0.4.0.2@sha256:5412f6aa29c5756634ee30e8df923c83ab9f012a4b8797c460af3d7078466764,2740
+- git: https://github.com/hasktorch/tintin
+  commit: 0d5afba586da01e0a54e598745676c5c56189178
+- git: https://github.com/hasktorch/tokenizers
+  commit: 9d25f0ba303193e97f8b22b9c93cbc84725886c3
+  subdirs:
+    - bindings/haskell/tokenizers-haskell
+- git: https://github.com/hasktorch/typelevel-rewrite-rules
+  commit: 4176e10d4de2d1310506c0fcf6a74956d81d59b6
+- git: https://github.com/hasktorch/type-errors-pretty
+  commit: 32d7abec6a21c42a5f960d7f4133d604e8be79ec
+- union-find-array-0.1.0.3@sha256:242e066ec516d61f262947e5794edc7bbc11fd538a0415c03ac0c01b028cfa8a,1372
+- clay-0.14.0@sha256:382eced24317f9ed0f7a0a4789cdfc6fc8dd32895cdb0c4ea50a1613bee08af3,2128
+- inline-c-0.9.1.10
+- inline-c-cpp-0.5.0.2
+- git: http://github.com/DaisukeBekki/hasktorch-tools.git
+  commit: 3f589a6eaf158df972bac922feda22b76f4ab82b
+# - random-shuffle-0.0.4@sha256:e5fa568cea36d57eb8ec93da2a8880ea60e96d95b73a17e0099bf5e60a1e0324,1173
+# - cereal-text-0.1.0.2@sha256:f69c9ceb8442e8cdcd3c638a8a0fe3fb13aa0cecc6ca033edc8e43a9b4c42645,940
+- classy-prelude-yesod-1.5.0@sha256:8f7e183bdfd6d2ea9674284c4f285294ab086aff60d9be4e5d7d2f3c1a2b05b7,1330
 
 allow-newer: true
 
