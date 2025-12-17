@@ -134,11 +134,12 @@ predictRule device params judgment bi_directional wordMap delimiterToken =
       -- forward関数を呼び出して予測確率テンソルを取得
       output' = forward device params tokens bi_directional
       -- テンソルから値を取得（形状は[1, num_rules]）
-      probabilities :: [[Float]]
-      probabilities = asValue output'
-      -- 最初のバッチ（バッチサイズ1なので最初の要素）を取得
-      probs = head probabilities
-      -- インデックスと確率をペアにして、確率の降順でソート
+      numRules = case shape output' of
+        [_, n] -> n
+        [n] -> n
+        _      -> error $ "Unexpected output shape: " ++ show (shape output')
+      flat = reshape [numRules] output'
+      probs = asValue flat :: [Float]
       indexedProbs = zip [0..] probs
       sortedIndexedProbs = List.sortOn (Down . snd) indexedProbs
       -- インデックスを規則に変換（BR.RuleLabelとして）
