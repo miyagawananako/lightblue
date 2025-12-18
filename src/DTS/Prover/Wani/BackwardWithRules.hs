@@ -266,16 +266,17 @@ deduce' goal depth setting
                     formationRules = [BR.PiForm] ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.DisjForm] else [])
                     nonFormationRules = filter (\r -> not (r `elem` formationRules)) availableRules
 
-                    -- Get prioritized ordering only for non-formation rules
-                    prioritizedRules = case WB.getPrioritizedRules setting of
-                      M.Just getPrioritizedRules -> getPrioritizedRules goal nonFormationRules
-                      M.Nothing -> nonFormationRules
-
                     -- Call BR.rule on formation rules and non-formation (prioritized) rules.
                     -- We sequence both groups and pass the combined results to
                     -- ruleResultToSubGoalsets; formation results (even if empty) are
                     -- thus considered but were not part of the prioritization input.
-                    ruleCallList = (map (\r -> BR.rule r goal setting) formationRules) ++ (map (\ruleLabel -> BR.rule ruleLabel goal setting) prioritizedRules)
+                    -- prioritizedRules is computed lazily inside the list concatenation
+                    -- to avoid calling getPrioritizedRules unless actually needed.
+                    ruleCallList = (map (\r -> BR.rule r goal setting) formationRules) ++ 
+                      (let prioritizedRules = case WB.getPrioritizedRules setting of
+                             M.Just getPrioritizedRules -> getPrioritizedRules goal nonFormationRules
+                             M.Nothing -> nonFormationRules
+                       in map (\ruleLabel -> BR.rule ruleLabel goal setting) prioritizedRules)
                     subgoalsetsIO = sortSubGoalSets $ (ruleResultToSubGoalsets depth $ depth < WB.debug setting) $ sequence ruleCallList
                     resultIO = 
                         let resultDef = -- update `deduceNgLst` and `failedlst` to be used in deeper search
