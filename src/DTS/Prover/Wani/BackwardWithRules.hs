@@ -252,18 +252,32 @@ deduce' goal depth setting
                 return $ WB.debugLogWithTerm (sig,var) (A.Conclusion DdB.Kind) arrowType depth setting "kind cannot be a term."  WB.resultDef{WB.rStatus = WB.mergeStatus (WB.sStatus setting) WB.statusDef{WB.usedMaxDepth = depth}}
               _ -> -- M.Nothing or M.Just term
                 let -- 使用可能な規則のリストを構築
+                    -- Build the available rules as before, but treat formation rules
+                    -- (PiForm, SigmaForm, EqForm, DisjForm) separately: they will NOT be
+                    -- passed into the prioritizer. Instead we call them explicitly and
+                    -- prepend/apply their results when applicable.
                     availableRules = 
                       [BR.PiForm]
                       ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.Membership,BR.AskOracle,BR.PiIntro,BR.SigmaIntro,BR.PiElim,BR.TopIntro,BR.DisjIntro,BR.DisjElim,BR.DisjForm] else [])
                       ++ [BR.Dne | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithDNE && (arrowType /= (A.Conclusion DdB.Kind))]
                       ++ [BR.Efq | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithEFQ && (arrowType /= (A.Conclusion DdB.Kind))]
-                    prioritizedRules = case WB.getPrioritizedRules setting of
-                      M.Just getPrioritizedRules -> getPrioritizedRules goal availableRules
-                      M.Nothing -> availableRules
-                    subgoalsetsIO = sortSubGoalSets $ (ruleResultToSubGoalsets depth $ depth < WB.debug setting) $ sequence $ 
-                      map
-                        (\ruleLabel -> BR.rule ruleLabel goal setting)
-                        prioritizedRules
+
+                    -- formation rules are removed from the set passed to the prioritizer
+                    formationRules = [BR.PiForm] ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.DisjForm] else [])
+                    nonFormationRules = filter (\r -> not (r `elem` formationRules)) availableRules
+
+                    -- Call BR.rule on formation rules and non-formation (prioritized) rules.
+                    -- We sequence both groups and pass the combined results to
+                    -- ruleResultToSubGoalsets; formation results (even if empty) are
+                    -- thus considered but were not part of the prioritization input.
+                    -- prioritizedRules is computed lazily inside the list concatenation
+                    -- to avoid calling getPrioritizedRules unless actually needed.
+                    ruleCallList = (map (\r -> BR.rule r goal setting) formationRules) ++ 
+                      (let prioritizedRules = case WB.getPrioritizedRules setting of
+                             M.Just getPrioritizedRules -> getPrioritizedRules goal nonFormationRules
+                             M.Nothing -> nonFormationRules
+                       in map (\ruleLabel -> BR.rule ruleLabel goal setting) prioritizedRules)
+                    subgoalsetsIO = sortSubGoalSets $ (ruleResultToSubGoalsets depth $ depth < WB.debug setting) $ sequence ruleCallList
                     resultIO = 
                         let resultDef = -- update `deduceNgLst` and `failedlst` to be used in deeper search
                                 WB.resultDef{WB.rStatus = WB.mergeStatus (WB.sStatus setting) (WB.statusDef{WB.usedMaxDepth = depth,WB.deduceNgLst = ((sig,var),arrowType) : (WB.deduceNgLst $WB.sStatus setting),WB.failedlst = maybe (WB.failedlst $WB.sStatus setting) (\arrowTerm -> (((sig,var),arrowTerm,arrowType) : (WB.failedlst $WB.sStatus setting))) justTerm})} -- Currently, `arrowType` proof search is performed under environment `con`, and to prevent infinite loops, it is set to round up when `arrowType` proof search is needed under environment `con`(★).
