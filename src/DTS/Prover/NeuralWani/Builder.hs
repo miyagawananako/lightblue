@@ -1,4 +1,4 @@
-module NeuralWani.Builder
+module DTS.Prover.NeuralWani.Builder
   ( neuralWaniBuilder
   , modelPath
   , frequentWordsPath
@@ -17,8 +17,8 @@ import Torch.Serialize (loadParams)
 import Torch.NN (sample)
 import Torch.Device (Device(..),DeviceType(..))
 
-import qualified NeuralWani.Forward as F
-import qualified NeuralWani.SplitJudgment as S
+import qualified DTS.Prover.NeuralWani.Forward as F
+import qualified DTS.Prover.NeuralWani.SplitJudgment as S
 import qualified Data.Map.Strict as Map
 
 -- 本来lightblue内に置くパス（パスは仮）。CUDA でしか開けない
@@ -67,3 +67,4 @@ neuralWaniBuilder = do
             filteredRuleLabels = filter (`elem` availableRuleLabels) predictedRuleLabels
         in filteredRuleLabels
       Nothing -> availableRuleLabels
+

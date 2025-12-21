@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module NeuralWani.SplitJudgment
+module DTS.Prover.NeuralWani.SplitJudgment
     ( loadActionsFromBinary
     , getConstantSymbolsFromJudgment
     , getFrequentConstantSymbols
@@ -239,3 +239,4 @@ splitJudgment judgment wordMap delimiterToken =
 -- lightblueのBR.dttruleToRuleLabelをエクスポート
 dttruleToRuleLabel :: QT.DTTrule -> Maybe BR.RuleLabel
 dttruleToRuleLabel = BR.dttruleToRuleLabel
+
