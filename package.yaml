@@ -123,9 +123,9 @@ library:
   - DTS.Prover.Wani.BackwardWithRules
   - DTS.Prover.Wani.Arrowterm
   - DTS.Prover.Wani.Prove
-  - NeuralWani.Builder
-  - NeuralWani.Forward
-  - NeuralWani.SplitJudgment
+  - DTS.Prover.NeuralWani.Builder
+  - DTS.Prover.NeuralWani.Forward
+  - DTS.Prover.NeuralWani.SplitJudgment
   - TPTP.Syntax
   - TPTP.FormulaSyntax
   - TPTP.Lexer

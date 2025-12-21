@@ -26,7 +26,7 @@ import qualified Interface.Text as IText
 
 import TPTP.Convert (processFile)
 import qualified TPTPInfo as TI
-import NeuralWani.Builder (neuralWaniBuilder, modelPath, frequentWordsPath)
+import DTS.Prover.NeuralWani.Builder (neuralWaniBuilder, modelPath, frequentWordsPath)
 
 data EvalResult = EvalResult
   { erFilename       :: T.Text

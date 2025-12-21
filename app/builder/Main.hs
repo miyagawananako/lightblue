@@ -3,7 +3,7 @@ import qualified DTS.Prover.Wani.WaniBase as WB
 import qualified DTS.Prover.Wani.Arrowterm as A
 import qualified Data.Text.Lazy as T
 
-import NeuralWani.Builder (neuralWaniBuilder)
+import DTS.Prover.NeuralWani.Builder (neuralWaniBuilder)
 
 goalExample :: WB.Goal
 goalExample = WB.Goal

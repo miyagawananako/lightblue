@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module NeuralWani.Forward where
+module DTS.Prover.NeuralWani.Forward where
 
 import GHC.Generics                   --base
 import Data.Ord (Down(..))
@@ -22,7 +22,7 @@ import Torch.Layer.Linear (LinearHypParams(..),LinearParams,linearLayer)
 import Torch.Layer.LSTM   (LstmHypParams(..),LstmParams,lstmLayers)
 
 --プロジェクト固有のモジュール
-import NeuralWani.SplitJudgment (Token(..), splitJudgment, DelimiterToken(..), WordMap)
+import DTS.Prover.NeuralWani.SplitJudgment (Token(..), splitJudgment, DelimiterToken(..), WordMap)
 
 -- | ニューラルネットワークのハイパーパラメータを定義するデータ型
 data HypParams = HypParams {
@@ -145,3 +145,4 @@ predictRule device params judgment bi_directional wordMap delimiterToken =
       -- インデックスを規則に変換（BR.RuleLabelとして）
       predictedRules = map (\(idx, _) -> toEnum idx :: BR.RuleLabel) sortedIndexedProbs
   in predictedRules
+
