@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -15,13 +16,16 @@
 
 module Main (main) where
 
-import Control.Monad (forM)
-import System.FilePath ((</>))
+import Control.Monad (forM, forM_)
+import System.FilePath ((</>), takeDirectory)
+import System.Directory (createDirectoryIfMissing)
+import Data.List (isSuffixOf)
 import qualified Data.Text as StrictT     --text
+import qualified Data.Text.IO as TextIO   --text
 import qualified Data.Text.Lazy as TL     --text
 import qualified Data.Text.Lazy.IO as TL  --text
 import qualified Data.ByteString as B     --bytestring
-import Data.Store (Store, encode)
+import Data.Store (Store, encode, decode)
 import qualified GHC.Generics as G
 import System.Environment (getArgs)
 import qualified System.IO as S           --base
@@ -53,24 +57,45 @@ data JSeMProblemData = JSeMProblemData
   , jspInferenceQuery  :: Maybe DTT.ProofSearchQuery   -- ^ 推論問題（prove'に渡す問題）
   } deriving (Show, G.Generic, Store)
 
+-- | JSeMファイルごとのデータ
+data JSeMFileData = JSeMFileData
+  { jfdFileName :: String              -- ^ JSeMファイル名（例: "Adjectives"）
+  , jfdProblems :: [JSeMProblemData]   -- ^ そのファイルに含まれる問題データ
+  } deriving (Show, G.Generic, Store)
+
 -- | JSeM XMLファイルのリスト
 jsemFileNames :: [String]
 jsemFileNames = 
-  [ "Adjectives", "CompoundAdjective", "GeneralizedQuantifier", "Question"
-  , "Adverb", "CompoundVerb", "Modality", "TemporalReference"
-  , "Attitudes", "Conditional", "NP", "Toritate"
-  , "AuxiliaryVerb", "Conjunction", "NewAdjective", "Verbs"
-  , "CaseParticle", "Coordination", "NominalAnaphora"
+  [ "Adjectives"
+  , "CompoundAdjective"
+  , "GeneralizedQuantifier"
+  -- , "Question"
+  -- , "Adverb"
+  -- , "CompoundVerb"
+  -- , "Modality"
+  , "TemporalReference"
+  , "Attitudes"
+  -- , "Conditional"
+  , "NP"
+  -- , "Toritate"
+  -- , "AuxiliaryVerb"
+  -- , "Conjunction"
+  -- , "NewAdjective"
+  , "Verbs"
+  -- , "CaseParticle"
+  -- , "Coordination"
+  , "NominalAnaphora"
   ]
 
 -- ============================================
 -- JSeM問題の読み込みと処理
 -- ============================================
 
--- | JSeM問題を読み込み、型チェック証明木と推論問題を抽出する
-loadJSeMProblems :: FilePath -> CP.ParseSetting -> QT.Prover -> IO [JSeMProblemData]
-loadJSeMProblems jsemDir parseSetting prover = do
-  problemLists <- forM jsemFileNames $ \fileName -> do
+-- | JSeM問題を読み込み、型チェック証明木と推論問題を抽出し、各ファイルごとに即座に保存
+loadAndSaveJSeMProblems :: FilePath -> FilePath -> CP.ParseSetting -> QT.Prover -> IO [(String, [JSeMProblemData])]
+loadAndSaveJSeMProblems jsemDir outputDir parseSetting prover = do
+  createDirectoryIfMissing True outputDir
+  forM jsemFileNames $ \fileName -> do
     let filePath = jsemDir </> fileName ++ ".xml"
     putStrLn $ "Loading: " ++ filePath
     contents <- TL.readFile filePath
@@ -79,9 +104,9 @@ loadJSeMProblems jsemDir parseSetting prover = do
     results <- forM parsedJSeM $ \j -> do
       let jsemId = StrictT.unpack $ J.jsem_id j
       S.putStr $ "[JSeM-ID " ++ jsemId ++ "] "
-      mapM_ StrictT.putStr $ J.premises j
+      mapM_ TextIO.putStr $ J.premises j
       S.putStr " ==> "
-      StrictT.putStrLn $ J.hypothesis j
+      TextIO.putStrLn $ J.hypothesis j
       
       let sentences = reverse $ (TL.fromStrict $ J.hypothesis j) : (map TL.fromStrict $ J.premises j)
           parseResult = NLI.parseWithTypeCheck parseSetting prover [("dummy", DTT.Entity)] [] sentences
@@ -99,9 +124,16 @@ loadJSeMProblems jsemDir parseSetting prover = do
         , jspInferenceQuery = inferenceQuery
         }
     
-    return results
-  
-  return $ concat problemLists
+    -- 処理完了後、即座に保存
+    let outputPath = outputDir </> fileName ++ ".bin"
+        fileData = JSeMFileData
+          { jfdFileName = fileName
+          , jfdProblems = results
+          }
+    B.writeFile outputPath (encode fileData)
+    putStrLn $ "  Saved: " ++ outputPath ++ " (" ++ show (length results) ++ " problems)"
+    
+    return (fileName, results)
 
 -- | ParseResultから型チェック証明木を抽出
 trawlTypeCheckDiagrams :: NLI.ParseResult -> ListT.ListT IO QT.DTTProofDiagram
@@ -138,9 +170,45 @@ extractJudgmentRules tree = processTree [] tree
          then updatedPairs
          else foldl processTree updatedPairs ds
 
--- | JSeMProblemDataをファイルに保存
+-- | JSeMProblemDataをファイルに保存（統合版）
 saveJSeMProblems :: FilePath -> [JSeMProblemData] -> IO ()
 saveJSeMProblems path problems = B.writeFile path (encode problems)
+
+-- | JSeMファイルごとにデータを保存
+saveJSeMProblemsPerFile :: FilePath -> [(String, [JSeMProblemData])] -> IO ()
+saveJSeMProblemsPerFile outputDir problemsPerFile = do
+  createDirectoryIfMissing True outputDir
+  forM_ problemsPerFile $ \(fileName, problems) -> do
+    let filePath = outputDir </> fileName ++ ".bin"
+        fileData = JSeMFileData
+          { jfdFileName = fileName
+          , jfdProblems = problems
+          }
+    B.writeFile filePath (encode fileData)
+    putStrLn $ "  " ++ fileName ++ ".bin (" ++ show (length problems) ++ " problems)"
+
+-- | JSeMFileDataをファイルから読み込み
+loadJSeMFileData :: FilePath -> IO JSeMFileData
+loadJSeMFileData path = do
+  bytes <- B.readFile path
+  case decode bytes of
+    Left err -> error $ "Failed to decode JSeMFileData from " ++ path ++ ": " ++ show err
+    Right fileData -> return fileData
+
+-- | 指定したJSeMファイルのデータを読み込み
+loadJSeMProblemsFromFile :: FilePath -> String -> IO [JSeMProblemData]
+loadJSeMProblemsFromFile outputDir fileName = do
+  let filePath = outputDir </> fileName ++ ".bin"
+  fileData <- loadJSeMFileData filePath
+  return $ jfdProblems fileData
+
+-- | 全てのJSeMファイルのデータを読み込み
+loadAllJSeMProblems :: FilePath -> IO [(String, [JSeMProblemData])]
+loadAllJSeMProblems outputDir = do
+  forM jsemFileNames $ \fileName -> do
+    let filePath = outputDir </> fileName ++ ".bin"
+    fileData <- loadJSeMFileData filePath
+    return (jfdFileName fileData, jfdProblems fileData)
 
 -- ============================================
 -- メイン関数
@@ -155,11 +223,14 @@ main = do
         _ -> error $ unlines
           [ "Usage: collectTypeCheckTrees-exe jsemDir outputPath"
           , ""
-          , "Example: collectTypeCheckTrees-exe ../JSeM/data/v1.0 jsemProblemData.bin"
+          , "Example: collectTypeCheckTrees-exe ../JSeM/data/v1.0 jsemProblemData"
           , ""
           , "Arguments:"
           , "  jsemDir    : String - Path to JSeM XML directory"
-          , "  outputPath : String - Output file path for JSeMProblemData"
+          , "  outputPath : String - Output directory for per-file data, or .bin file for all-in-one"
+          , ""
+          , "Note: If outputPath ends with .bin, saves all data in one file."
+          , "      Otherwise, creates a directory and saves each JSeM file separately."
           ]
   
   putStrLn "=== Collect TypeCheck Trees from JSeM ==="
@@ -177,27 +248,82 @@ main = do
       parseSetting = CP.ParseSetting langOptions beamW nParse nTypeCheck nProof True Nothing False False
       prover = NLI.getProver NLI.Wani $ QT.defaultProofSearchSetting { QT.maxDepth = Just 4, QT.maxTime = Nothing, QT.logicSystem = Just QT.Classical }
   
-  -- JSeM問題を読み込み
-  putStrLn "=== Loading JSeM Problems ==="
-  allProblems <- loadJSeMProblems jsemDir parseSetting prover
+  -- JSeM問題を読み込み（各ファイル処理後に即座に保存）
+  putStrLn "=== Loading and Saving JSeM Problems ==="
   
-  putStrLn ""
-  putStrLn "=== Summary ==="
-  putStrLn $ "Total JSeM problems loaded: " ++ show (length allProblems)
+  -- .binで終わる場合は統合版モード、それ以外はファイルごとモード
+  let isUnifiedMode = ".bin" `isSuffixOf` outputPath
   
-  -- (Judgment, Rule)ペアを全て抽出してカウント
-  let allJudgmentRules = concatMap jspJudgmentRules allProblems
-  putStrLn $ "Total judgment-rule pairs: " ++ show (length allJudgmentRules)
-  
-  -- 推論問題を持つ問題のみ抽出してカウント
-  let problemsWithQuery = filter (not . null . jspInferenceQuery) allProblems
-  putStrLn $ "Problems with inference query: " ++ show (length problemsWithQuery)
-  
-  -- 保存
-  putStrLn ""
-  putStrLn "=== Saving ==="
-  saveJSeMProblems outputPath allProblems
-  putStrLn $ "JSeMProblemData saved to: " ++ outputPath
+  if isUnifiedMode
+    then do
+      -- 統合版モード: 全て読み込んでから一括保存
+      putStrLn "Mode: Unified file (all-in-one)"
+      problemsPerFile <- forM jsemFileNames $ \fileName -> do
+        let filePath = jsemDir </> fileName ++ ".xml"
+        putStrLn $ "Loading: " ++ filePath
+        contents <- TL.readFile filePath
+        parsedJSeM <- J.xml2jsemData $ TL.toStrict contents
+        
+        results <- forM parsedJSeM $ \j -> do
+          let jsemId = StrictT.unpack $ J.jsem_id j
+          S.putStr $ "[JSeM-ID " ++ jsemId ++ "] "
+          mapM_ TextIO.putStr $ J.premises j
+          S.putStr " ==> "
+          TextIO.putStrLn $ J.hypothesis j
+          
+          let sentences = reverse $ (TL.fromStrict $ J.hypothesis j) : (map TL.fromStrict $ J.premises j)
+              parseResult = NLI.parseWithTypeCheck parseSetting prover [("dummy", DTT.Entity)] [] sentences
+          
+          typeCheckDiagrams <- ListT.toList $ trawlTypeCheckDiagrams parseResult
+          let judgmentRules = concatMap extractJudgmentRules typeCheckDiagrams
+          
+          inferenceQuery <- getInferenceQuery parseResult
+          
+          return JSeMProblemData
+            { jspJsemId = jsemId
+            , jspJudgmentRules = judgmentRules
+            , jspInferenceQuery = inferenceQuery
+            }
+        
+        return (fileName, results)
+      
+      let allProblems = concatMap snd problemsPerFile
+      saveJSeMProblems outputPath allProblems
+      putStrLn $ "All data saved to: " ++ outputPath
+      
+      -- サマリー
+      putStrLn ""
+      putStrLn "=== Summary ==="
+      putStrLn $ "Total JSeM problems: " ++ show (length allProblems)
+      let allJudgmentRules = concatMap jspJudgmentRules allProblems
+      putStrLn $ "Total judgment-rule pairs: " ++ show (length allJudgmentRules)
+      let problemsWithQuery = filter (not . null . jspInferenceQuery) allProblems
+      putStrLn $ "Problems with inference query: " ++ show (length problemsWithQuery)
+    else do
+      -- ファイルごとモード: 各ファイル処理後に即座に保存
+      putStrLn $ "Mode: Per-file (directory: " ++ outputPath ++ ")"
+      problemsPerFile <- loadAndSaveJSeMProblems jsemDir outputPath parseSetting prover
+      
+      let allProblems = concatMap snd problemsPerFile
+      
+      -- 統合版も保存（互換性のため）
+      putStrLn ""
+      putStrLn "=== Creating combined file ==="
+      let combinedPath = outputPath </> "all.bin"
+      saveJSeMProblems combinedPath allProblems
+      putStrLn $ "Combined data saved to: " ++ combinedPath
+      
+      -- サマリー
+      putStrLn ""
+      putStrLn "=== Summary ==="
+      putStrLn $ "Total JSeM files: " ++ show (length problemsPerFile)
+      forM_ problemsPerFile $ \(fileName, problems) -> do
+        putStrLn $ "  " ++ fileName ++ ": " ++ show (length problems) ++ " problems"
+      putStrLn $ "Total JSeM problems: " ++ show (length allProblems)
+      let allJudgmentRules = concatMap jspJudgmentRules allProblems
+      putStrLn $ "Total judgment-rule pairs: " ++ show (length allJudgmentRules)
+      let problemsWithQuery = filter (not . null . jspInferenceQuery) allProblems
+      putStrLn $ "Problems with inference query: " ++ show (length problemsWithQuery)
   
   putStrLn ""
   putStrLn "=== Done ==="

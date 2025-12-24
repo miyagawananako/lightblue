@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -17,11 +18,11 @@
 
 module Main (main) where
 
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate, try, SomeException)
 import System.Random.Shuffle (shuffleM)
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
 import System.FilePath ((</>))
 import qualified Data.Text.Lazy as TL     --text
 import qualified Data.Text.Lazy.IO as TL  --text
@@ -80,6 +81,25 @@ data JSeMProblemData = JSeMProblemData
   , jspInferenceQuery  :: Maybe DTT.ProofSearchQuery   -- ^ 推論問題（prove'に渡す問題）
   } deriving (Show, G.Generic, Store)
 
+-- | JSeMファイルごとのデータ
+data JSeMFileData = JSeMFileData
+  { jfdFileName :: String              -- ^ JSeMファイル名（例: "Adjectives"）
+  , jfdProblems :: [JSeMProblemData]   -- ^ そのファイルに含まれる問題データ
+  } deriving (Show, G.Generic, Store)
+
+-- | JSeMファイル名のリスト（collectTypeCheckTrees.hsと同じ）
+jsemFileNames :: [String]
+jsemFileNames = 
+  [ "Adjectives"
+  , "CompoundAdjective"
+  , "GeneralizedQuantifier"
+  , "TemporalReference"
+  , "Attitudes"
+  , "NP"
+  , "Verbs"
+  , "NominalAnaphora"
+  ]
+
 -- | すべてのラベル（RuleLabel）のリスト
 allLabels :: [BR.RuleLabel]
 allLabels = [minBound..]
@@ -122,13 +142,59 @@ data EvaluationResult = EvaluationResult
 -- JSeMProblemDataの読み込み
 -- ============================================
 
--- | JSeMProblemDataをファイルから読み込み
+-- | JSeMProblemDataをファイルまたはディレクトリから読み込み
+-- ディレクトリの場合は全てのJSeMファイルを統合して返す
 loadJSeMProblemsFromFile :: FilePath -> IO [JSeMProblemData]
 loadJSeMProblemsFromFile path = do
+  isDir <- doesDirectoryExist path
+  if isDir
+    then do
+      -- ディレクトリの場合: all.bin があればそれを読み込み、なければ個別ファイルを統合
+      let allBinPath = path </> "all.bin"
+      allBinExists <- doesDirectoryExist allBinPath  -- ファイルの存在チェックは簡易的
+      if not allBinExists
+        then do
+          -- all.binがあれば優先的に使用
+          bytes <- try (B.readFile allBinPath) :: IO (Either SomeException B.ByteString)
+          case bytes of
+            Right bs -> case decode bs of
+              Left err -> loadFromPerFile path  -- デコード失敗時は個別ファイルから読み込み
+              Right problems -> return problems
+            Left _ -> loadFromPerFile path  -- ファイルなければ個別ファイルから読み込み
+        else loadFromPerFile path
+    else do
+      -- 単一ファイルの場合
+      bytes <- B.readFile path
+      case decode bytes of
+        Left err -> error $ "Failed to decode JSeMProblemData: " ++ show err
+        Right problems -> return problems
+  where
+    loadFromPerFile dir = do
+      problemsPerFile <- loadAllJSeMProblemsFromDir dir
+      return $ concatMap snd problemsPerFile
+
+-- | JSeMFileDataを単一ファイルから読み込み
+loadJSeMFileData :: FilePath -> IO JSeMFileData
+loadJSeMFileData path = do
   bytes <- B.readFile path
   case decode bytes of
-    Left err -> error $ "Failed to decode JSeMProblemData: " ++ show err
-    Right problems -> return problems
+    Left err -> error $ "Failed to decode JSeMFileData from " ++ path ++ ": " ++ show err
+    Right fileData -> return fileData
+
+-- | 指定したJSeMファイルのデータをディレクトリから読み込み
+loadJSeMProblemsFromDir :: FilePath -> String -> IO [JSeMProblemData]
+loadJSeMProblemsFromDir outputDir fileName = do
+  let filePath = outputDir </> fileName ++ ".bin"
+  fileData <- loadJSeMFileData filePath
+  return $ jfdProblems fileData
+
+-- | ディレクトリから全てのJSeMファイルのデータを読み込み
+loadAllJSeMProblemsFromDir :: FilePath -> IO [(String, [JSeMProblemData])]
+loadAllJSeMProblemsFromDir outputDir = do
+  forM jsemFileNames $ \fileName -> do
+    let filePath = outputDir </> fileName ++ ".bin"
+    fileData <- loadJSeMFileData filePath
+    return (jfdFileName fileData, jfdProblems fileData)
 
 -- ============================================
 -- ユーティリティ関数
@@ -416,7 +482,7 @@ saveProofSearchReport outputDir config results = do
       neuralSuccessCount = length $ filter pseNeuralSuccess results
       bothSuccess = filter (\r -> pseNormalSuccess r && pseNeuralSuccess r) results
       
-  let report = unlines
+  let reportLines =
         [ "=== Proof Search Evaluation Report ==="
         , ""
         , "Configuration:"
@@ -429,17 +495,19 @@ saveProofSearchReport outputDir config results = do
         , "  NeuralWani Prover success: " ++ show neuralSuccessCount ++ "/" ++ show totalTests
         , ""
         ] ++
-        if null bothSuccess
+        (if null bothSuccess
         then ["  No tests where both provers succeeded."]
         else
           let avgNormalTime = sum (map pseNormalTime bothSuccess) / fromIntegral (length bothSuccess)
               avgNeuralTime = sum (map pseNeuralTime bothSuccess) / fromIntegral (length bothSuccess)
               speedup = realToFrac avgNormalTime / realToFrac avgNeuralTime :: Double
+              speedupStr = "  Speedup: " ++ show (fromIntegral (round (speedup * 100)) / 100 :: Double) ++ "x"
           in [ "Average Time (both succeeded: " ++ show (length bothSuccess) ++ " tests):"
              , "  Normal Prover: " ++ TL.unpack (formatTimeNominal avgNormalTime)
              , "  NeuralWani Prover: " ++ TL.unpack (formatTimeNominal avgNeuralTime)
-             , printf "  Speedup: %.2fx" speedup
-             ]
+             , speedupStr
+             ])
+      report = unlines reportLines
   
   writeFile reportFile report
   putStrLn $ "Report saved to: " ++ reportFile
@@ -495,6 +563,12 @@ main = do
   -- ============================================
   putStrLn "=== Phase 1: Loading JSeMProblemData ==="
   putStrLn $ "Loading from: " ++ jsemDataPath
+  
+  -- ディレクトリかファイルかを判定
+  isDir <- doesDirectoryExist jsemDataPath
+  if isDir
+    then putStrLn "Detected directory: loading per-file data..."
+    else putStrLn "Detected file: loading all-in-one data..."
   
   allProblems <- loadJSeMProblemsFromFile jsemDataPath
   
@@ -563,7 +637,7 @@ main = do
   putStrLn ""
   putStrLn "=== Phase 3: Training Model ==="
   
-  let device = Device CPU 0
+  let device = Device CUDA 0
       biDirectional = bi
       embDim = emb
       numOfLayers = l
