@@ -2,20 +2,6 @@ resolver: lts-22.43
 
 flags: {}
 
-extra-include-dirs:
-  # - /home/ubuntu/libraries/hasktorch/deps/libtorch/include/torch/csrc/api/include
-  # - /home/ubuntu/libraries/hasktorch/deps/libtorch/include
-  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/include/torch/csrc/api/include
-  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/include
-
-extra-lib-dirs:
-  # - /home/ubuntu/libraries/hasktorch/deps/libtorch/lib
-  # - /home/ubuntu/libraries/hasktorch/deps/mklml/lib
-  # - /home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
-  - /home/nanacom/.local/lib/hasktorch/deps/libtorch/lib
-  - /home/nanacom/.local/lib/hasktorch/deps/mklml/lib
-  - /home/nanacom/.local/lib/hasktorch/deps/libtokenizers/lib
-
 extra-deps:
 - git: http://github.com/DaisukeBekki/JSeM
   commit: c2cd39168e267007b4690dbf625329bac57a8185
@@ -30,13 +16,12 @@ extra-deps:
     - hasktorch
     - libtorch-ffi
     - libtorch-ffi-helper
+    - codegen
 - git: git@github.com:DaisukeBekki/hasktorch-tools.git
-  commit: 936928cdee27e179a5e3775d146046b107b0eba1
+  commit: 3f589a6eaf158df972bac922feda22b76f4ab82b
 # parserModule
 - git: https://github.com/morning85/parserModules.git
   commit: 899aae39b8c57866148fb3b19a4ac2f393ffaabd
-- git: http://github.com/DaisukeBekki/hasktorch-tools.git
-    commit: 3f589a6eaf158df972bac922feda22b76f4ab82b
 
 ghc-options:
   libtorch-ffi: -optcxx-Wno-error=stringop-overflow
