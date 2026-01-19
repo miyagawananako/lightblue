@@ -1,0 +1,377 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\geometry{margin=1.5cm}
+
+\definecolor{matchcolor}{RGB}{200,255,200}
+\definecolor{mismatchcolor}{RGB}{255,200,200}
+
+\title{TPTP Evaluation Report}
+\author{NeuralWani Evaluator}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Configuration}
+\begin{itemize}
+\item maxDepth: 9
+\item maxTime: 30000
+\item logicSystem: \textbf{dne}
+\item Session ID: \texttt{D9T30000\_dne\_2025-12-18\_09-08-10}
+\item NeuralWani Model: \texttt{trainedDataBackwardWithoutF/typeEo\_biFalse\_s32\_lr5.0e-4\_i128\_h128\_layer1/2025-12-16\_13-41-38/seq-class.model}
+\item NeuralWani FrequentWords: \texttt{trainedDataBackwardWithoutF/typeEo\_biFalse\_s32\_lr5.0e-4\_i128\_h128\_layer1/2025-12-16\_13-41-38/frequentWords.bin}
+\item Proof Trees (Normal): \texttt{evaluateResult/proofTrees\_D9T30000\_dne\_2025-12-18\_09-08-10/normal/}
+\item Proof Trees (NeuralWani): \texttt{evaluateResult/proofTrees\_D9T30000\_dne\_2025-12-18\_09-08-10/neural/}
+\end{itemize}
+
+\section{Summary}
+
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total files processed & 268 \\
+Evaluated & 264 \\
+Skipped & 4 \\
+\midrule
+Normal Prover Correct & 50/264 (18.9\%) \\
+NeuralWani Prover Correct & 33/264 (12.5\%) \\
+\midrule
+Avg. Normal Time & 179.992 sec \\
+Avg. NeuralWani Time & 423.589 sec \\
+\midrule
+All Match (Expected=Normal=Neural) & 33/264 (12.5\%) \\
+Avg. Normal Time (All Match) & 0.258 sec \\
+Avg. NeuralWani Time (All Match) & 20.723 sec \\
+\bottomrule
+\end{tabular}
+
+\subsection{Confusion Matrix (Normal Prover)}
+
+\begin{tabular}{l|ccc|c}
+\toprule
+ & \multicolumn{3}{c|}{\textbf{Predicted}} & \\
+\textbf{Actual} & YES & NO & UNK & Total \\
+\midrule
+YES & 49 & 0 & 175 & 224 \\
+NO & 0 & 1 & 39 & 40 \\
+UNK & 0 & 0 & 0 & 0 \\
+\midrule
+Total & 49 & 1 & 214 & 264 \\
+\bottomrule
+\end{tabular}
+
+
+\subsection{Confusion Matrix (NeuralWani Prover)}
+
+\begin{tabular}{l|ccc|c}
+\toprule
+ & \multicolumn{3}{c|}{\textbf{Predicted}} & \\
+\textbf{Actual} & YES & NO & UNK & Total \\
+\midrule
+YES & 32 & 0 & 192 & 224 \\
+NO & 0 & 1 & 39 & 40 \\
+UNK & 0 & 0 & 0 & 0 \\
+\midrule
+Total & 32 & 1 & 231 & 264 \\
+\bottomrule
+\end{tabular}
+
+
+
+\section{Detailed Results}
+
+\begin{longtable}{lcccccccc}
+\toprule
+\textbf{File} & \textbf{Expected} & \textbf{Normal} & \textbf{Time} & \textbf{Match} & \textbf{Neural} & \textbf{Time} & \textbf{Match} & \textbf{Speedup} \\
+\midrule
+\endhead
+SYN/SYN000+1.p & YES & UNKNOWN & 642.526s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 844.288s & \cellcolor{mismatchcolor}$\times$ & 0.76x \\
+SYN/SYN001+1.p & YES & YES & 0.043s & \cellcolor{matchcolor}$\checkmark$ & YES & 8.927s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN036+2.p & YES & UNKNOWN & 149.349s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 455.225s & \cellcolor{mismatchcolor}$\times$ & 0.33x \\
+SYN/SYN040+1.p & YES & YES & 1.356s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 453.287s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN041+1.p & YES & YES & 0.207s & \cellcolor{matchcolor}$\checkmark$ & YES & 47.159s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN044+1.p & YES & UNKNOWN & 59.499s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 435.667s & \cellcolor{mismatchcolor}$\times$ & 0.14x \\
+SYN/SYN045+1.p & YES & UNKNOWN & 229.729s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 568.889s & \cellcolor{mismatchcolor}$\times$ & 0.40x \\
+SYN/SYN046+1.p & YES & YES & 51.224s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 521.028s & \cellcolor{mismatchcolor}$\times$ & 0.10x \\
+SYN/SYN047+1.p & YES & UNKNOWN & 122.002s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 574.874s & \cellcolor{mismatchcolor}$\times$ & 0.21x \\
+SYN/SYN048+1.p & YES & UNKNOWN & 10.248s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 229.099s & \cellcolor{mismatchcolor}$\times$ & 0.04x \\
+SYN/SYN049+1.p & YES & UNKNOWN & 54.540s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 294.298s & \cellcolor{mismatchcolor}$\times$ & 0.19x \\
+SYN/SYN050+1.p & YES & UNKNOWN & 83.874s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 320.552s & \cellcolor{mismatchcolor}$\times$ & 0.26x \\
+SYN/SYN051+1.p & YES & UNKNOWN & 232.251s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 471.813s & \cellcolor{mismatchcolor}$\times$ & 0.49x \\
+SYN/SYN052+1.p & YES & UNKNOWN & 148.191s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 384.825s & \cellcolor{mismatchcolor}$\times$ & 0.39x \\
+SYN/SYN053+1.p & YES & UNKNOWN & 135.847s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 438.002s & \cellcolor{mismatchcolor}$\times$ & 0.31x \\
+SYN/SYN054+1.p & YES & UNKNOWN & 345.768s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 666.470s & \cellcolor{mismatchcolor}$\times$ & 0.52x \\
+SYN/SYN055+1.p & YES & YES & 12.041s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 545.264s & \cellcolor{mismatchcolor}$\times$ & 0.02x \\
+SYN/SYN056+1.p & YES & UNKNOWN & 267.534s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 456.654s & \cellcolor{mismatchcolor}$\times$ & 0.59x \\
+SYN/SYN057+1.p & YES & UNKNOWN & 513.829s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 773.791s & \cellcolor{mismatchcolor}$\times$ & 0.66x \\
+SYN/SYN058+1.p & YES & UNKNOWN & 247.680s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 482.951s & \cellcolor{mismatchcolor}$\times$ & 0.51x \\
+SYN/SYN059+1.p & YES & UNKNOWN & 307.255s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 467.932s & \cellcolor{mismatchcolor}$\times$ & 0.66x \\
+SYN/SYN060+1.p & YES & UNKNOWN & 109.439s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 323.493s & \cellcolor{mismatchcolor}$\times$ & 0.34x \\
+SYN/SYN061+1.p & YES & UNKNOWN & 0.000s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 648.108s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN062+1.p & YES & UNKNOWN & 139.618s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 493.694s & \cellcolor{mismatchcolor}$\times$ & 0.28x \\
+SYN/SYN063+1.p & YES & UNKNOWN & 63.957s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 469.286s & \cellcolor{mismatchcolor}$\times$ & 0.14x \\
+SYN/SYN064+1.p & YES & UNKNOWN & 82.448s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 280.757s & \cellcolor{mismatchcolor}$\times$ & 0.29x \\
+SYN/SYN065+1.p & YES & UNKNOWN & 269.019s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 493.894s & \cellcolor{mismatchcolor}$\times$ & 0.54x \\
+SYN/SYN066+1.p & YES & UNKNOWN & 353.029s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 506.082s & \cellcolor{mismatchcolor}$\times$ & 0.70x \\
+SYN/SYN067+1.p & YES & UNKNOWN & 262.469s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 672.732s & \cellcolor{mismatchcolor}$\times$ & 0.39x \\
+SYN/SYN068+1.p & YES & UNKNOWN & 592.494s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 745.435s & \cellcolor{mismatchcolor}$\times$ & 0.79x \\
+SYN/SYN069+1.p & YES & YES & 39.285s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 679.626s & \cellcolor{mismatchcolor}$\times$ & 0.06x \\
+SYN/SYN070+1.p & YES & UNKNOWN & 0.000s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 727.794s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN071+1.p & YES & UNKNOWN & 23.384s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 574.022s & \cellcolor{mismatchcolor}$\times$ & 0.04x \\
+SYN/SYN072+1.p & YES & UNKNOWN & 221.707s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 454.529s & \cellcolor{mismatchcolor}$\times$ & 0.49x \\
+SYN/SYN073+1.p & YES & UNKNOWN & 11.422s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 249.710s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN074+1.p & YES & UNKNOWN & 148.681s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 450.874s & \cellcolor{mismatchcolor}$\times$ & 0.33x \\
+SYN/SYN075+1.p & YES & UNKNOWN & 148.716s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 462.025s & \cellcolor{mismatchcolor}$\times$ & 0.32x \\
+SYN/SYN076+1.p & YES & UNKNOWN & 485.581s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 743.332s & \cellcolor{mismatchcolor}$\times$ & 0.65x \\
+SYN/SYN077+1.p & YES & UNKNOWN & 331.123s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 611.698s & \cellcolor{mismatchcolor}$\times$ & 0.54x \\
+SYN/SYN078+1.p & YES & UNKNOWN & 91.766s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 415.136s & \cellcolor{mismatchcolor}$\times$ & 0.22x \\
+SYN/SYN079+1.p & YES & UNKNOWN & 2.847s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 228.540s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN080+1.p & YES & UNKNOWN & 0.081s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 29.352s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN081+1.p & YES & UNKNOWN & 282.299s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 499.946s & \cellcolor{mismatchcolor}$\times$ & 0.56x \\
+SYN/SYN082+1.p & YES & UNKNOWN & 80.743s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 355.403s & \cellcolor{mismatchcolor}$\times$ & 0.23x \\
+SYN/SYN083+1.p & YES & UNKNOWN & 324.023s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 536.571s & \cellcolor{mismatchcolor}$\times$ & 0.60x \\
+SYN/SYN084+1.p & YES & UNKNOWN & 104.728s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 505.416s & \cellcolor{mismatchcolor}$\times$ & 0.21x \\
+SYN/SYN315+1.p & YES & UNKNOWN & 19.446s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 224.249s & \cellcolor{mismatchcolor}$\times$ & 0.09x \\
+SYN/SYN316+1.p & NO & UNKNOWN & 8.933s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 189.882s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN317+1.p & YES & UNKNOWN & 134.827s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 286.902s & \cellcolor{mismatchcolor}$\times$ & 0.47x \\
+SYN/SYN318+1.p & YES & UNKNOWN & 109.922s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 289.515s & \cellcolor{mismatchcolor}$\times$ & 0.38x \\
+SYN/SYN319+1.p & YES & UNKNOWN & 70.115s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 324.176s & \cellcolor{mismatchcolor}$\times$ & 0.22x \\
+SYN/SYN320+1.p & NO & UNKNOWN & 102.890s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 311.877s & \cellcolor{mismatchcolor}$\times$ & 0.33x \\
+SYN/SYN321+1.p & YES & UNKNOWN & 107.032s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 277.164s & \cellcolor{mismatchcolor}$\times$ & 0.39x \\
+SYN/SYN322+1.p & NO & UNKNOWN & 294.701s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 516.245s & \cellcolor{mismatchcolor}$\times$ & 0.57x \\
+SYN/SYN323+1.p & YES & UNKNOWN & 364.315s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 558.418s & \cellcolor{mismatchcolor}$\times$ & 0.65x \\
+SYN/SYN324+1.p & NO & UNKNOWN & 63.830s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 226.382s & \cellcolor{mismatchcolor}$\times$ & 0.28x \\
+SYN/SYN325+1.p & YES & UNKNOWN & 34.002s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 238.265s & \cellcolor{mismatchcolor}$\times$ & 0.14x \\
+SYN/SYN326+1.p & YES & UNKNOWN & 138.753s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 323.929s & \cellcolor{mismatchcolor}$\times$ & 0.43x \\
+SYN/SYN327+1.p & YES & UNKNOWN & 100.321s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 368.044s & \cellcolor{mismatchcolor}$\times$ & 0.27x \\
+SYN/SYN328+1.p & YES & UNKNOWN & 96.824s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 323.138s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN329+1.p & NO & UNKNOWN & 109.200s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 314.491s & \cellcolor{mismatchcolor}$\times$ & 0.35x \\
+SYN/SYN330+1.p & NO & UNKNOWN & 151.758s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 316.637s & \cellcolor{mismatchcolor}$\times$ & 0.48x \\
+SYN/SYN331+1.p & YES & UNKNOWN & 372.901s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 592.654s & \cellcolor{mismatchcolor}$\times$ & 0.63x \\
+SYN/SYN332+1.p & YES & UNKNOWN & 108.439s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 332.096s & \cellcolor{mismatchcolor}$\times$ & 0.33x \\
+SYN/SYN333+1.p & YES & UNKNOWN & 93.386s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 282.043s & \cellcolor{mismatchcolor}$\times$ & 0.33x \\
+SYN/SYN334+1.p & YES & UNKNOWN & 94.903s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 305.248s & \cellcolor{mismatchcolor}$\times$ & 0.31x \\
+SYN/SYN335+1.p & NO & UNKNOWN & 133.924s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 336.169s & \cellcolor{mismatchcolor}$\times$ & 0.40x \\
+SYN/SYN336+1.p & YES & UNKNOWN & 264.118s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 452.632s & \cellcolor{mismatchcolor}$\times$ & 0.58x \\
+SYN/SYN337+1.p & NO & UNKNOWN & 375.403s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 716.927s & \cellcolor{mismatchcolor}$\times$ & 0.52x \\
+SYN/SYN338+1.p & YES & UNKNOWN & 19.095s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 203.941s & \cellcolor{mismatchcolor}$\times$ & 0.09x \\
+SYN/SYN339+1.p & YES & UNKNOWN & 24.639s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 191.318s & \cellcolor{mismatchcolor}$\times$ & 0.13x \\
+SYN/SYN340+1.p & YES & UNKNOWN & 59.154s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 216.019s & \cellcolor{mismatchcolor}$\times$ & 0.27x \\
+SYN/SYN341+1.p & YES & UNKNOWN & 21.102s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 215.513s & \cellcolor{mismatchcolor}$\times$ & 0.10x \\
+SYN/SYN342+1.p & NO & UNKNOWN & 75.360s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 329.649s & \cellcolor{mismatchcolor}$\times$ & 0.23x \\
+SYN/SYN343+1.p & YES & UNKNOWN & 108.120s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 297.626s & \cellcolor{mismatchcolor}$\times$ & 0.36x \\
+SYN/SYN344+1.p & NO & UNKNOWN & 155.560s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 404.543s & \cellcolor{mismatchcolor}$\times$ & 0.38x \\
+SYN/SYN345+1.p & YES & UNKNOWN & 276.709s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 510.064s & \cellcolor{mismatchcolor}$\times$ & 0.54x \\
+SYN/SYN346+1.p & YES & UNKNOWN & 369.271s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 702.562s & \cellcolor{mismatchcolor}$\times$ & 0.53x \\
+SYN/SYN347+1.p & YES & UNKNOWN & 210.179s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 666.855s & \cellcolor{mismatchcolor}$\times$ & 0.32x \\
+SYN/SYN348+1.p & NO & UNKNOWN & 17.739s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 223.716s & \cellcolor{mismatchcolor}$\times$ & 0.08x \\
+SYN/SYN349+1.p & YES & UNKNOWN & 8.649s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 218.668s & \cellcolor{mismatchcolor}$\times$ & 0.04x \\
+SYN/SYN350+1.p & YES & UNKNOWN & 111.036s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 406.500s & \cellcolor{mismatchcolor}$\times$ & 0.27x \\
+SYN/SYN351+1.p & YES & UNKNOWN & 262.883s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 507.695s & \cellcolor{mismatchcolor}$\times$ & 0.52x \\
+SYN/SYN352+1.p & YES & UNKNOWN & 242.985s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 504.844s & \cellcolor{mismatchcolor}$\times$ & 0.48x \\
+SYN/SYN353+1.p & YES & UNKNOWN & 291.270s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 504.972s & \cellcolor{mismatchcolor}$\times$ & 0.58x \\
+SYN/SYN354+1.p & YES & UNKNOWN & 287.854s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 503.115s & \cellcolor{mismatchcolor}$\times$ & 0.57x \\
+SYN/SYN355+1.p & YES & YES & 32.360s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 536.745s & \cellcolor{mismatchcolor}$\times$ & 0.06x \\
+SYN/SYN356+1.p & YES & UNKNOWN & 61.645s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 318.233s & \cellcolor{mismatchcolor}$\times$ & 0.19x \\
+SYN/SYN357+1.p & YES & YES & 0.021s & \cellcolor{matchcolor}$\checkmark$ & YES & 3.704s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+SYN/SYN358+1.p & YES & UNKNOWN & 72.902s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 261.813s & \cellcolor{mismatchcolor}$\times$ & 0.28x \\
+SYN/SYN359+1.p & YES & UNKNOWN & 357.247s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 492.218s & \cellcolor{mismatchcolor}$\times$ & 0.73x \\
+SYN/SYN360+1.p & YES & UNKNOWN & 361.408s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 509.460s & \cellcolor{mismatchcolor}$\times$ & 0.71x \\
+SYN/SYN361+1.p & YES & UNKNOWN & 311.085s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 618.641s & \cellcolor{mismatchcolor}$\times$ & 0.50x \\
+SYN/SYN362+1.p & YES & UNKNOWN & 304.639s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 612.702s & \cellcolor{mismatchcolor}$\times$ & 0.50x \\
+SYN/SYN363+1.p & YES & UNKNOWN & 15.173s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 270.077s & \cellcolor{mismatchcolor}$\times$ & 0.06x \\
+SYN/SYN364+1.p & YES & UNKNOWN & 242.369s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 513.204s & \cellcolor{mismatchcolor}$\times$ & 0.47x \\
+SYN/SYN365+1.p & YES & UNKNOWN & 319.918s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 526.347s & \cellcolor{mismatchcolor}$\times$ & 0.61x \\
+SYN/SYN366+1.p & YES & UNKNOWN & 396.372s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 560.363s & \cellcolor{mismatchcolor}$\times$ & 0.71x \\
+SYN/SYN367+1.p & YES & UNKNOWN & 152.003s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 520.920s & \cellcolor{mismatchcolor}$\times$ & 0.29x \\
+SYN/SYN368+1.p & YES & UNKNOWN & 10.136s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 225.704s & \cellcolor{mismatchcolor}$\times$ & 0.04x \\
+SYN/SYN369+1.p & YES & UNKNOWN & 37.617s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 298.141s & \cellcolor{mismatchcolor}$\times$ & 0.13x \\
+SYN/SYN370+1.p & YES & UNKNOWN & 3.359s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 210.864s & \cellcolor{mismatchcolor}$\times$ & 0.02x \\
+SYN/SYN371+1.p & YES & UNKNOWN & 73.903s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 246.838s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN373+1.p & YES & UNKNOWN & 116.263s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 274.034s & \cellcolor{mismatchcolor}$\times$ & 0.42x \\
+SYN/SYN374+1.p & YES & UNKNOWN & 16.695s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 216.616s & \cellcolor{mismatchcolor}$\times$ & 0.08x \\
+SYN/SYN375+1.p & YES & UNKNOWN & 140.550s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 374.316s & \cellcolor{mismatchcolor}$\times$ & 0.38x \\
+SYN/SYN376+1.p & YES & UNKNOWN & 262.203s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 494.938s & \cellcolor{mismatchcolor}$\times$ & 0.53x \\
+SYN/SYN377+1.p & YES & UNKNOWN & 140.870s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 389.592s & \cellcolor{mismatchcolor}$\times$ & 0.36x \\
+SYN/SYN378+1.p & YES & YES & 5.870s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 434.210s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN379+1.p & YES & UNKNOWN & 104.078s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 442.217s & \cellcolor{mismatchcolor}$\times$ & 0.24x \\
+SYN/SYN380+1.p & YES & UNKNOWN & 296.706s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 486.199s & \cellcolor{mismatchcolor}$\times$ & 0.61x \\
+SYN/SYN381+1.p & YES & UNKNOWN & 300.117s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 495.107s & \cellcolor{mismatchcolor}$\times$ & 0.61x \\
+SYN/SYN382+1.p & YES & UNKNOWN & 300.430s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 601.042s & \cellcolor{mismatchcolor}$\times$ & 0.50x \\
+SYN/SYN383+1.p & YES & UNKNOWN & 60.985s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 278.911s & \cellcolor{mismatchcolor}$\times$ & 0.22x \\
+SYN/SYN384+1.p & YES & UNKNOWN & 121.822s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 403.726s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN385+1.p & YES & UNKNOWN & 197.740s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 450.289s & \cellcolor{mismatchcolor}$\times$ & 0.44x \\
+SYN/SYN386+1.p & YES & UNKNOWN & 314.727s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 486.434s & \cellcolor{mismatchcolor}$\times$ & 0.65x \\
+SYN/SYN387+1.p & YES & YES & 0.083s & \cellcolor{matchcolor}$\checkmark$ & YES & 14.382s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+SYN/SYN388+1.p & YES & YES & 1.357s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 442.200s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN389+1.p & YES & UNKNOWN & 7.840s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 248.908s & \cellcolor{mismatchcolor}$\times$ & 0.03x \\
+SYN/SYN390+1.p & YES & YES & 0.000s & \cellcolor{matchcolor}$\checkmark$ & YES & 0.326s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN391+1.p & YES & UNKNOWN & 132.135s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 580.259s & \cellcolor{mismatchcolor}$\times$ & 0.23x \\
+SYN/SYN392+1.p & YES & UNKNOWN & 141.413s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 521.741s & \cellcolor{mismatchcolor}$\times$ & 0.27x \\
+SYN/SYN393+1.003.p & YES & UNKNOWN & 92.782s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 343.740s & \cellcolor{mismatchcolor}$\times$ & 0.27x \\
+SYN/SYN394+1.p & YES & YES & 0.133s & \cellcolor{matchcolor}$\checkmark$ & YES & 33.840s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN395+1.p & YES & YES & 0.033s & \cellcolor{matchcolor}$\checkmark$ & YES & 7.287s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN396+1.p & YES & UNKNOWN & 85.597s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 508.790s & \cellcolor{mismatchcolor}$\times$ & 0.17x \\
+SYN/SYN397+1.p & YES & UNKNOWN & 226.807s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 465.747s & \cellcolor{mismatchcolor}$\times$ & 0.49x \\
+SYN/SYN398+1.p & YES & UNKNOWN & 52.126s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 315.537s & \cellcolor{mismatchcolor}$\times$ & 0.17x \\
+SYN/SYN399+1.p & YES & YES & 5.338s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 427.379s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN400+1.p & YES & YES & 0.003s & \cellcolor{matchcolor}$\checkmark$ & YES & 1.541s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN401+1.p & YES & YES & 0.016s & \cellcolor{matchcolor}$\checkmark$ & YES & 5.206s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN402+1.p & YES & YES & 0.003s & \cellcolor{matchcolor}$\checkmark$ & YES & 0.744s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN403+1.p & YES & YES & 1.374s & \cellcolor{matchcolor}$\checkmark$ & YES & 63.247s & \cellcolor{matchcolor}$\checkmark$ & 0.02x \\
+SYN/SYN404+1.p & YES & UNKNOWN & 29.296s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 247.991s & \cellcolor{mismatchcolor}$\times$ & 0.12x \\
+SYN/SYN405+1.p & YES & YES & 0.125s & \cellcolor{matchcolor}$\checkmark$ & YES & 32.049s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN406+1.p & YES & YES & 0.293s & \cellcolor{matchcolor}$\checkmark$ & YES & 43.176s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+SYN/SYN407+1.p & YES & UNKNOWN & 263.585s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 557.907s & \cellcolor{mismatchcolor}$\times$ & 0.47x \\
+SYN/SYN408+1.p & YES & YES & 1.641s & \cellcolor{matchcolor}$\checkmark$ & YES & 70.480s & \cellcolor{matchcolor}$\checkmark$ & 0.02x \\
+SYN/SYN409+1.p & YES & UNKNOWN & 89.268s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 353.563s & \cellcolor{mismatchcolor}$\times$ & 0.25x \\
+SYN/SYN410+1.p & YES & UNKNOWN & 59.900s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 273.843s & \cellcolor{mismatchcolor}$\times$ & 0.22x \\
+SYN/SYN411+1.p & YES & UNKNOWN & 292.968s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 483.279s & \cellcolor{mismatchcolor}$\times$ & 0.61x \\
+SYN/SYN412+1.p & YES & UNKNOWN & 301.366s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 499.545s & \cellcolor{mismatchcolor}$\times$ & 0.60x \\
+SYN/SYN413+1.p & YES & UNKNOWN & 320.504s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 663.379s & \cellcolor{mismatchcolor}$\times$ & 0.48x \\
+SYN/SYN414+1.p & NO & UNKNOWN & 228.363s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 476.815s & \cellcolor{mismatchcolor}$\times$ & 0.48x \\
+SYN/SYN415+1.p & YES & UNKNOWN & 0.000s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 410.352s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN416+1.p & YES & YES & 8.192s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 324.735s & \cellcolor{mismatchcolor}$\times$ & 0.03x \\
+SYN/SYN417+1.p & YES & UNKNOWN & 15.826s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 293.535s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN490+1.p & NO & UNKNOWN & 880.475s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 1116.170s & \cellcolor{mismatchcolor}$\times$ & 0.79x \\
+SYN/SYN491+1.p & NO & UNKNOWN & 488.973s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 820.736s & \cellcolor{mismatchcolor}$\times$ & 0.60x \\
+SYN/SYN492+1.p & NO & UNKNOWN & 702.695s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 965.119s & \cellcolor{mismatchcolor}$\times$ & 0.73x \\
+SYN/SYN493+1.p & NO & UNKNOWN & 564.291s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 860.040s & \cellcolor{mismatchcolor}$\times$ & 0.66x \\
+SYN/SYN494+1.p & NO & UNKNOWN & 605.642s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 889.795s & \cellcolor{mismatchcolor}$\times$ & 0.68x \\
+SYN/SYN496+1.p & NO & UNKNOWN & 559.992s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 851.283s & \cellcolor{mismatchcolor}$\times$ & 0.66x \\
+SYN/SYN497+1.p & NO & UNKNOWN & 888.204s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 1132.126s & \cellcolor{mismatchcolor}$\times$ & 0.78x \\
+SYN/SYN515+1.p & NO & UNKNOWN & 511.703s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 857.781s & \cellcolor{mismatchcolor}$\times$ & 0.60x \\
+SYN/SYN516+1.p & NO & UNKNOWN & 477.026s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 814.831s & \cellcolor{mismatchcolor}$\times$ & 0.59x \\
+SYN/SYN517+1.p & NO & UNKNOWN & 478.077s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 832.424s & \cellcolor{mismatchcolor}$\times$ & 0.57x \\
+SYN/SYN521+1.p & NO & UNKNOWN & 501.299s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 861.339s & \cellcolor{mismatchcolor}$\times$ & 0.58x \\
+SYN/SYN522+1.p & NO & UNKNOWN & 590.613s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 914.415s & \cellcolor{mismatchcolor}$\times$ & 0.65x \\
+SYN/SYN523+1.p & NO & UNKNOWN & 485.352s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 810.823s & \cellcolor{mismatchcolor}$\times$ & 0.60x \\
+SYN/SYN524+1.p & NO & UNKNOWN & 588.577s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 905.763s & \cellcolor{mismatchcolor}$\times$ & 0.65x \\
+SYN/SYN525+1.p & NO & UNKNOWN & 513.128s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 875.858s & \cellcolor{mismatchcolor}$\times$ & 0.59x \\
+SYN/SYN526+1.p & NO & UNKNOWN & 702.848s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 1019.884s & \cellcolor{mismatchcolor}$\times$ & 0.69x \\
+SYN/SYN527+1.p & NO & UNKNOWN & 787.667s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 1041.877s & \cellcolor{mismatchcolor}$\times$ & 0.76x \\
+SYN/SYN528+1.p & NO & UNKNOWN & 703.673s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 1000.101s & \cellcolor{mismatchcolor}$\times$ & 0.70x \\
+SYN/SYN529+1.p & NO & UNKNOWN & 1827.813s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 2022.942s & \cellcolor{mismatchcolor}$\times$ & 0.90x \\
+SYN/SYN530+1.p & NO & UNKNOWN & 863.699s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 1102.869s & \cellcolor{mismatchcolor}$\times$ & 0.78x \\
+SYN/SYN531+1.p & NO & UNKNOWN & 697.658s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 965.797s & \cellcolor{mismatchcolor}$\times$ & 0.72x \\
+SYN/SYN532+1.p & NO & UNKNOWN & 687.980s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 979.239s & \cellcolor{mismatchcolor}$\times$ & 0.70x \\
+SYN/SYN533+1.p & NO & UNKNOWN & 554.341s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 859.053s & \cellcolor{mismatchcolor}$\times$ & 0.65x \\
+SYN/SYN534+1.p & NO & UNKNOWN & 679.457s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 979.375s & \cellcolor{mismatchcolor}$\times$ & 0.69x \\
+SYN/SYN535+1.p & NO & UNKNOWN & 686.956s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 984.920s & \cellcolor{mismatchcolor}$\times$ & 0.70x \\
+SYN/SYN536+1.p & NO & UNKNOWN & 644.555s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 933.112s & \cellcolor{mismatchcolor}$\times$ & 0.69x \\
+SYN/SYN550+1.p & YES & UNKNOWN & 151.766s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 320.994s & \cellcolor{mismatchcolor}$\times$ & 0.47x \\
+SYN/SYN551+1.p & YES & UNKNOWN & 75.036s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 398.670s & \cellcolor{mismatchcolor}$\times$ & 0.19x \\
+SYN/SYN551+2.p & YES & UNKNOWN & 4.284s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 231.849s & \cellcolor{mismatchcolor}$\times$ & 0.02x \\
+SYN/SYN551+3.p & YES & UNKNOWN & 15.877s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 297.675s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN721+1.p & YES & UNKNOWN & 60.484s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 298.743s & \cellcolor{mismatchcolor}$\times$ & 0.20x \\
+SYN/SYN722+1.p & YES & UNKNOWN & 77.550s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 592.992s & \cellcolor{mismatchcolor}$\times$ & 0.13x \\
+SYN/SYN723+1.p & YES & UNKNOWN & 205.300s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 476.363s & \cellcolor{mismatchcolor}$\times$ & 0.43x \\
+SYN/SYN724+1.p & YES & UNKNOWN & 80.399s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 388.666s & \cellcolor{mismatchcolor}$\times$ & 0.21x \\
+SYN/SYN725+1.p & NO & UNKNOWN & 77.089s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 323.289s & \cellcolor{mismatchcolor}$\times$ & 0.24x \\
+SYN/SYN726+1.p & YES & UNKNOWN & 240.810s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 673.904s & \cellcolor{mismatchcolor}$\times$ & 0.36x \\
+SYN/SYN727+1.p & YES & UNKNOWN & 15.212s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 270.367s & \cellcolor{mismatchcolor}$\times$ & 0.06x \\
+SYN/SYN728+1.p & YES & UNKNOWN & 242.072s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 507.262s & \cellcolor{mismatchcolor}$\times$ & 0.48x \\
+SYN/SYN729+1.p & YES & UNKNOWN & 319.692s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 523.414s & \cellcolor{mismatchcolor}$\times$ & 0.61x \\
+SYN/SYN730+1.p & YES & UNKNOWN & 3.406s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 212.502s & \cellcolor{mismatchcolor}$\times$ & 0.02x \\
+SYN/SYN731+1.p & YES & UNKNOWN & 28.280s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 215.746s & \cellcolor{mismatchcolor}$\times$ & 0.13x \\
+SYN/SYN732+1.p & YES & UNKNOWN & 179.393s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 478.475s & \cellcolor{mismatchcolor}$\times$ & 0.37x \\
+SYN/SYN733+1.p & YES & UNKNOWN & 39.713s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 292.555s & \cellcolor{mismatchcolor}$\times$ & 0.14x \\
+SYN/SYN915+1.p & YES & YES & 0.000s & \cellcolor{matchcolor}$\checkmark$ & YES & 0.007s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+SYN/SYN916+1.p & NO & NO & 0.001s & \cellcolor{matchcolor}$\checkmark$ & NO & 0.167s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN917+1.p & YES & UNKNOWN & 689.532s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 852.021s & \cellcolor{mismatchcolor}$\times$ & 0.81x \\
+SYN/SYN918+1.p & YES & UNKNOWN & 300.790s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 658.638s & \cellcolor{mismatchcolor}$\times$ & 0.46x \\
+SYN/SYN919+1.p & YES & UNKNOWN & 382.432s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 567.329s & \cellcolor{mismatchcolor}$\times$ & 0.67x \\
+SYN/SYN920+1.p & YES & UNKNOWN & 197.017s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 661.446s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN921+1.p & YES & UNKNOWN & 39.674s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 267.184s & \cellcolor{mismatchcolor}$\times$ & 0.15x \\
+SYN/SYN922+1.p & YES & UNKNOWN & 65.501s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 327.126s & \cellcolor{mismatchcolor}$\times$ & 0.20x \\
+SYN/SYN923+1.p & YES & YES & 32.246s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 650.466s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN924+1.p & YES & UNKNOWN & 200.130s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 464.712s & \cellcolor{mismatchcolor}$\times$ & 0.43x \\
+SYN/SYN925+1.p & YES & UNKNOWN & 11.456s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 238.375s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN926+1.p & YES & YES & 0.014s & \cellcolor{matchcolor}$\checkmark$ & YES & 3.577s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN927+1.p & YES & YES & 0.016s & \cellcolor{matchcolor}$\checkmark$ & YES & 5.093s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN928+1.p & YES & UNKNOWN & 29.249s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 248.091s & \cellcolor{mismatchcolor}$\times$ & 0.12x \\
+SYN/SYN929+1.p & YES & YES & 113.826s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 474.193s & \cellcolor{mismatchcolor}$\times$ & 0.24x \\
+SYN/SYN930+1.p & YES & UNKNOWN & 130.089s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 437.529s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN931+1.p & YES & UNKNOWN & 34.707s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 254.366s & \cellcolor{mismatchcolor}$\times$ & 0.14x \\
+SYN/SYN932+1.p & YES & UNKNOWN & 4.818s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 222.585s & \cellcolor{mismatchcolor}$\times$ & 0.02x \\
+SYN/SYN933+1.p & YES & YES & 0.003s & \cellcolor{matchcolor}$\checkmark$ & YES & 1.477s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN934+1.p & YES & UNKNOWN & 67.271s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 277.101s & \cellcolor{mismatchcolor}$\times$ & 0.24x \\
+SYN/SYN935+1.p & YES & UNKNOWN & 53.846s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 267.440s & \cellcolor{mismatchcolor}$\times$ & 0.20x \\
+SYN/SYN936+1.p & YES & UNKNOWN & 118.837s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 389.907s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN937+1.p & YES & UNKNOWN & 143.688s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 381.628s & \cellcolor{mismatchcolor}$\times$ & 0.38x \\
+SYN/SYN939+1.p & YES & UNKNOWN & 175.010s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 478.045s & \cellcolor{mismatchcolor}$\times$ & 0.37x \\
+SYN/SYN940+1.p & YES & UNKNOWN & 147.779s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 492.367s & \cellcolor{mismatchcolor}$\times$ & 0.30x \\
+SYN/SYN941+1.p & YES & UNKNOWN & 145.142s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 470.849s & \cellcolor{mismatchcolor}$\times$ & 0.31x \\
+SYN/SYN942+1.p & YES & UNKNOWN & 84.100s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 270.737s & \cellcolor{mismatchcolor}$\times$ & 0.31x \\
+SYN/SYN943+1.p & YES & UNKNOWN & 393.694s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 663.998s & \cellcolor{mismatchcolor}$\times$ & 0.59x \\
+SYN/SYN944+1.p & YES & YES & 43.061s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 589.581s & \cellcolor{mismatchcolor}$\times$ & 0.07x \\
+SYN/SYN945+1.p & YES & YES & 0.041s & \cellcolor{matchcolor}$\checkmark$ & YES & 13.045s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN946+1.p & YES & YES & 24.369s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 459.783s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN947+1.p & YES & UNKNOWN & 71.904s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 421.087s & \cellcolor{mismatchcolor}$\times$ & 0.17x \\
+SYN/SYN948+1.p & YES & UNKNOWN & 55.072s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 273.382s & \cellcolor{mismatchcolor}$\times$ & 0.20x \\
+SYN/SYN949+1.p & YES & YES & 42.988s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 590.485s & \cellcolor{mismatchcolor}$\times$ & 0.07x \\
+SYN/SYN950+1.p & YES & UNKNOWN & 239.506s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 476.155s & \cellcolor{mismatchcolor}$\times$ & 0.50x \\
+SYN/SYN951+1.p & YES & UNKNOWN & 0.000s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 524.428s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN952+1.p & YES & UNKNOWN & 29.305s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 247.012s & \cellcolor{mismatchcolor}$\times$ & 0.12x \\
+SYN/SYN953+1.p & YES & YES & 0.120s & \cellcolor{matchcolor}$\checkmark$ & YES & 33.902s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN954+1.p & YES & UNKNOWN & 239.537s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 476.154s & \cellcolor{mismatchcolor}$\times$ & 0.50x \\
+SYN/SYN955+1.p & YES & YES & 0.033s & \cellcolor{matchcolor}$\checkmark$ & YES & 7.192s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN956+1.p & YES & YES & 0.376s & \cellcolor{matchcolor}$\checkmark$ & YES & 38.015s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+SYN/SYN957+1.p & YES & UNKNOWN & 247.762s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 479.996s & \cellcolor{mismatchcolor}$\times$ & 0.52x \\
+SYN/SYN958+1.p & YES & YES & 0.138s & \cellcolor{matchcolor}$\checkmark$ & YES & 31.286s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN959+1.p & YES & YES & 3.929s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 471.375s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN960+1.p & YES & UNKNOWN & 138.588s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 283.693s & \cellcolor{mismatchcolor}$\times$ & 0.49x \\
+SYN/SYN961+1.p & YES & YES & 0.039s & \cellcolor{matchcolor}$\checkmark$ & YES & 12.073s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN962+1.p & YES & YES & 0.011s & \cellcolor{matchcolor}$\checkmark$ & YES & 4.229s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN963+1.p & YES & UNKNOWN & 46.869s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 243.011s & \cellcolor{mismatchcolor}$\times$ & 0.19x \\
+SYN/SYN964+1.p & YES & YES & 0.008s & \cellcolor{matchcolor}$\checkmark$ & YES & 2.378s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN965+1.p & YES & UNKNOWN & 58.163s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 216.411s & \cellcolor{mismatchcolor}$\times$ & 0.27x \\
+SYN/SYN966+1.p & YES & UNKNOWN & 328.490s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 586.467s & \cellcolor{mismatchcolor}$\times$ & 0.56x \\
+SYN/SYN967+1.p & YES & UNKNOWN & 239.535s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 475.440s & \cellcolor{mismatchcolor}$\times$ & 0.50x \\
+SYN/SYN968+1.p & YES & UNKNOWN & 10.101s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 224.329s & \cellcolor{mismatchcolor}$\times$ & 0.05x \\
+SYN/SYN969+1.p & YES & YES & 1.616s & \cellcolor{matchcolor}$\checkmark$ & YES & 64.967s & \cellcolor{matchcolor}$\checkmark$ & 0.02x \\
+SYN/SYN970+1.p & YES & YES & 3.217s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 446.710s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN971+1.p & YES & UNKNOWN & 8.062s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 206.647s & \cellcolor{mismatchcolor}$\times$ & 0.04x \\
+SYN/SYN972+1.p & YES & YES & 0.507s & \cellcolor{matchcolor}$\checkmark$ & YES & 45.327s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+SYN/SYN973+1.p & YES & UNKNOWN & 0.709s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 152.253s & \cellcolor{mismatchcolor}$\times$ & 0.00x \\
+SYN/SYN974+1.p & YES & YES & 0.008s & \cellcolor{matchcolor}$\checkmark$ & YES & 2.296s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN975+1.p & YES & YES & 0.042s & \cellcolor{matchcolor}$\checkmark$ & YES & 13.372s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN976+1.p & YES & YES & 1.562s & \cellcolor{matchcolor}$\checkmark$ & YES & 71.397s & \cellcolor{matchcolor}$\checkmark$ & 0.02x \\
+SYN/SYN977+1.p & YES & UNKNOWN & 56.975s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 457.073s & \cellcolor{mismatchcolor}$\times$ & 0.12x \\
+SYN/SYN978+1.p & YES & YES & 0.007s & \cellcolor{matchcolor}$\checkmark$ & YES & 2.001s & \cellcolor{matchcolor}$\checkmark$ & 0.00x \\
+SYN/SYN979+1.p & YES & UNKNOWN & 323.530s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 470.934s & \cellcolor{mismatchcolor}$\times$ & 0.69x \\
+SYN/SYN980+1.p & YES & UNKNOWN & 127.071s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 480.647s & \cellcolor{mismatchcolor}$\times$ & 0.26x \\
+SYN/SYN981+1.p & YES & YES & 3.145s & \cellcolor{matchcolor}$\checkmark$ & UNKNOWN & 430.082s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN986+1.000.p & YES & UNKNOWN & 0.985s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 169.172s & \cellcolor{mismatchcolor}$\times$ & 0.01x \\
+SYN/SYN986+1.001.p & YES & UNKNOWN & 5.919s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 244.319s & \cellcolor{mismatchcolor}$\times$ & 0.02x \\
+SYN/SYN986+1.002.p & YES & UNKNOWN & 35.095s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 324.230s & \cellcolor{mismatchcolor}$\times$ & 0.11x \\
+SYN/SYN986+1.003.p & YES & UNKNOWN & 128.003s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 375.368s & \cellcolor{mismatchcolor}$\times$ & 0.34x \\
+SYN/SYN986+1.004.p & YES & UNKNOWN & 192.853s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 393.132s & \cellcolor{mismatchcolor}$\times$ & 0.49x \\
+SYN/SYN986+1.005.p & YES & UNKNOWN & 262.501s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 394.226s & \cellcolor{mismatchcolor}$\times$ & 0.67x \\
+SYN/SYN986+1.006.p & YES & UNKNOWN & 331.147s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 396.494s & \cellcolor{mismatchcolor}$\times$ & 0.84x \\
+\bottomrule
+\end{longtable}
+
+
+\section{Skipped Files}
+
+\begin{longtable}{ll}
+\toprule
+\textbf{File} & \textbf{Reason} \\
+\midrule
+\endhead
+SYN/SYN007+1.005.rm & target is Nothing, language is Nothing \\
+SYN/SYN372+1.p & target is Nothing, status is Nothing, language is Nothing \\
+SYN/SYN548+1.p & target is Nothing, status is Nothing, language is Nothing \\
+SYN/SYN549+1.p & target is Nothing, status is Nothing, language is Nothing \\
+\bottomrule
+\end{longtable}
+
+
+\end{document}

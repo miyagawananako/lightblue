@@ -1,0 +1,14 @@
+(PiI) type |- λ.(λ.1,λ.1):(Π entity)(Σ (Π c)c)(Π c)c
+  (SigmaI) type, entity |- (λ.0,λ.0):(Σ (Π c)c)(Π c)c
+    (PiI) type, entity |- λ.0:(Π c)c
+      (Var) type, entity, c |- 0:c
+        (Var) type, entity, c |- 0:c
+      (Var) type, entity |- c:type
+        (Con) type, entity |- c:type
+    (PiI) type, entity |- λ.0:(Π c)c
+      (Var) type, entity, c |- 0:c
+        (Var) type, entity, c |- 0:c
+      (Var) type, entity |- c:type
+        (Con) type, entity |- c:type
+  (Var) type |- entity:type
+    (Con) type |- entity:type

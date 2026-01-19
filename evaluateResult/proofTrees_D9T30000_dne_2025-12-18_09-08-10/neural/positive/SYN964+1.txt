@@ -1,0 +1,10 @@
+(PiI) type |- λ.0:(Π (Σ entity)(p 0))(Σ entity)(p 0)
+  (Var) type, (Σ entity)(p 0) |- 0:(Σ entity)(p 0)
+    (Var) type, (Σ entity)(p 0) |- 0:(Σ entity)(p 0)
+  (SigmaF) type |- (Σ entity)(p 0):type
+    (PiE) type, entity |- (p 0):type
+      (Con) type, entity |- p:(Π entity)type
+      (Var) type, entity |- 0:entity
+        (Var) type, entity |- 0:entity
+    (Var) type |- entity:type
+      (Con) type |- entity:type

@@ -1,0 +1,11 @@
+(SigmaI) type |- (λ.0,λ.0):(Σ (Π p)p)(Π p)p
+  (PiI) type |- λ.0:(Π p)p
+    (Var) type, p |- 0:p
+      (Var) type, p |- 0:p
+    (Var) type |- p:type
+      (Con) type |- p:type
+  (PiI) type |- λ.0:(Π p)p
+    (Var) type, p |- 0:p
+      (Var) type, p |- 0:p
+    (Var) type |- p:type
+      (Con) type |- p:type

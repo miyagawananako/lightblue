@@ -20,6 +20,7 @@ module Main (main) where
 
 import Control.Monad (forM, forM_)
 import Control.DeepSeq (rnf)
+import Data.Char (isAlphaNum)
 import Control.Exception (evaluate, try, SomeException)
 import System.Random.Shuffle (shuffleM)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
@@ -47,6 +48,7 @@ import qualified DTS.Prover.Wani.BackwardRules as BR
 import qualified DTS.Prover.Wani.Prove as Prove
 import qualified DTS.Prover.Wani.WaniBase as WB
 import qualified Interface.Tree as I
+import qualified Interface.Text as IText
 import Data.Maybe (mapMaybe, catMaybes)
 
 -- hasktorch関連のインポート
@@ -330,6 +332,17 @@ evaluateModel device model testData biDirectional = do
     , erClassificationReport = classReport
     }
 
+-- ============================================
+-- 補助関数
+-- ============================================
+
+-- | ファイル名に使えない/使いづらい文字を置換
+sanitize :: String -> String
+sanitize = map rep
+  where
+    rep c | isAlphaNum c || c == '-' || c == '_' = c
+          | otherwise = '_'
+
 -- | 評価結果をファイルに保存
 saveEvaluationReport :: FilePath -> EvaluationResult -> [BR.RuleLabel] -> IO ()
 saveEvaluationReport outputDir result labels = do
@@ -352,6 +365,9 @@ saveEvaluationReport outputDir result labels = do
 runProveWithTree :: QT.ProofSearchSetting -> DTT.ProofSearchQuery
                  -> IO ([I.Tree QT.DTTrule DTT.Judgment], NominalDiffTime)
 runProveWithTree setting query = do
+  -- 計測に入る前に、クエリを完全評価してGCを実行（ウォームアップ/環境ノイズ除去）
+  evaluate $ rnf query
+  performMajorGC
   startTime <- getCurrentTime
   
   let prover = Prove.prove' setting
@@ -365,6 +381,37 @@ runProveWithTree setting query = do
   let elapsedTime = diffUTCTime endTime startTime
   
   return (trees, elapsedTime)
+
+-- ============================================
+-- 証明木出力関連の関数（evaluate/Main.hs に準拠）
+-- ============================================
+
+-- | 証明木をテキストファイルに出力
+writeProofTreeText :: FilePath -> I.Tree QT.DTTrule DTT.Judgment -> IO ()
+writeProofTreeText filepath tree = do
+  let content = IText.toText tree
+  TL.writeFile filepath content
+
+-- | 証明木をHTML（MathML）形式でファイルに出力
+writeProofTreeHTML :: FilePath -> I.Tree QT.DTTrule DTT.Judgment -> IO ()
+writeProofTreeHTML filepath tree = do
+  content <- Prove.display tree
+  TL.writeFile filepath content
+
+-- | 証明木を複数の形式で出力（全ての証明木を出力）
+writeProofTrees :: FilePath -> String -> [I.Tree QT.DTTrule DTT.Judgment] -> IO ()
+writeProofTrees baseDir baseName trees = do
+  createDirectoryIfMissing True baseDir
+  case trees of
+    [] -> do
+      let noProofFile = baseDir </> (baseName ++ "_no_proof.txt")
+      writeFile noProofFile "No proof found."
+    _ -> do
+      forM_ (zip [1 :: Int ..] trees) $ \(i, tree) -> do
+        let txtPath = baseDir </> (baseName ++ printf "_proof_%02d.txt" i)
+            htmlPath = baseDir </> (baseName ++ printf "_proof_%02d.html" i)
+        writeProofTreeText txtPath tree
+        writeProofTreeHTML htmlPath tree
 
 -- | NeuralWaniを構築する関数（学習済みモデルから）
 buildNeuralWani :: Device -> Params -> WordMap -> Bool -> DelimiterToken 
@@ -382,9 +429,11 @@ buildNeuralWani device model wordMap biDirectional delimiterToken =
 -- | 単一のJSeM問題に対して証明探索を実行し、時間を計測する
 evaluateOneProblem :: ProverConfig 
                    -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])  -- ^ NeuralWani関数
+                   -> FilePath                                        -- ^ 出力ベースディレクトリ
+                   -> Int                                             -- ^ テストケース番号
                    -> JSeMProblemData
                    -> IO (Maybe ProofSearchEvalResult)
-evaluateOneProblem config neuralWaniFunc problem = 
+evaluateOneProblem config neuralWaniFunc outputBaseDir idx problem = 
   case jspInferenceQuery problem of
     Nothing -> return Nothing
     Just query -> do
@@ -408,11 +457,27 @@ evaluateOneProblem config neuralWaniFunc problem =
       performMajorGC
       (normalTrees, normalTime) <- runProveWithTree normalSetting query
       let normalSuccess = not (null normalTrees)
-      
+
       -- NeuralWani Proverで証明探索
       performMajorGC
       (neuralTrees, neuralTime) <- runProveWithTree neuralSetting query
       let neuralSuccess = not (null neuralTrees)
+
+      -- 出力用ベース名の作成（インデックス + JSeM ID をサニタイズ）
+      let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem))
+
+      -- クエリを保存（解けなくても必ず保存）
+      let queriesDir = outputBaseDir </> "queries"
+      createDirectoryIfMissing True queriesDir
+      let queryFile = queriesDir </> (baseName ++ ".txt")
+      TL.writeFile queryFile (TL.pack (show query))
+
+      -- 証明木を保存（Normal / Neural）
+      let proofBaseDir = outputBaseDir </> "proofTrees"
+          normalDir = proofBaseDir </> "normal"
+          neuralDir = proofBaseDir </> "neural"
+      writeProofTrees normalDir baseName normalTrees
+      writeProofTrees neuralDir baseName neuralTrees
       
       return $ Just ProofSearchEvalResult
         { pseJsemId        = jspJsemId problem
@@ -511,6 +576,135 @@ saveProofSearchReport outputDir config results = do
   
   writeFile reportFile report
   putStrLn $ "Report saved to: " ++ reportFile
+
+-- ============================================
+-- TeX レポート生成（JSeM評価用）
+-- ============================================
+
+-- | TeXの特殊文字をエスケープ（Lazy Text版）
+escapeTeX :: TL.Text -> TL.Text
+escapeTeX = TL.concatMap escapeChar
+  where
+    escapeChar '_' = "\\_"
+    escapeChar '#' = "\\#"
+    escapeChar '%' = "\\%"
+    escapeChar '&' = "\\&"
+    escapeChar '$' = "\\$"
+    escapeChar '{' = "\\{"
+    escapeChar '}' = "\\}"
+    escapeChar '^' = "\\^{}"
+    escapeChar '~' = "\\~{}"
+    escapeChar c   = TL.singleton c
+
+-- | 短い時間フォーマット（Lazy Text）
+formatTimeShort :: NominalDiffTime -> TL.Text
+formatTimeShort t = TL.pack $ printf "%.3fs" (realToFrac t :: Double)
+
+-- | サマリーTeXの生成（JSeM評価用）
+generateSummaryTexJSeM :: [ProofSearchEvalResult] -> TL.Text
+generateSummaryTexJSeM results =
+  let totalTests = length results
+      normalSuccessCount = length $ filter pseNormalSuccess results
+      neuralSuccessCount = length $ filter pseNeuralSuccess results
+      bothSuccess = filter (\r -> pseNormalSuccess r && pseNeuralSuccess r) results
+      avgNormalAll = if totalTests == 0 then 0 else sum (map pseNormalTime results) / fromIntegral totalTests
+      avgNeuralAll = if totalTests == 0 then 0 else sum (map pseNeuralTime results) / fromIntegral totalTests
+      avgNormalBoth = if null bothSuccess then 0 else sum (map pseNormalTime bothSuccess) / fromIntegral (length bothSuccess)
+      avgNeuralBoth = if null bothSuccess then 0 else sum (map pseNeuralTime bothSuccess) / fromIntegral (length bothSuccess)
+      avgSpeedupBoth :: Maybe Double
+      avgSpeedupBoth = if null bothSuccess then Nothing else Just $ avgToDouble avgNormalBoth / avgToDouble avgNeuralBoth
+      avgToDouble x = realToFrac x :: Double
+      speedupStr = maybe "N/A" (TL.pack . printf "%.2fx") avgSpeedupBoth
+  in TL.unlines
+    [ "\\begin{tabular}{ll}"
+    , "\\toprule"
+    , "\\textbf{Metric} & \\textbf{Value} \\\\"
+    , "\\midrule"
+    , "Total tests & " <> TL.pack (show totalTests) <> " \\\\"
+    , "Normal success & " <> TL.pack (show normalSuccessCount) <> "/" <> TL.pack (show totalTests) <> " \\\\"
+    , "Neural success & " <> TL.pack (show neuralSuccessCount) <> "/" <> TL.pack (show totalTests) <> " \\\\"
+    , "\\midrule"
+    , "Avg. Normal time (all) & " <> formatTimeNominal avgNormalAll <> " \\\\"
+    , "Avg. Neural time (all) & " <> formatTimeNominal avgNeuralAll <> " \\\\"
+    , "Avg. Normal time (both ok) & " <> formatTimeNominal avgNormalBoth <> " \\\\"
+    , "Avg. Neural time (both ok) & " <> formatTimeNominal avgNeuralBoth <> " \\\\"
+    , "Speedup (Normal/Neural; both ok avg) & " <> speedupStr <> " \\\\"
+    , "\\bottomrule"
+    , "\\end{tabular}"
+    ]
+
+-- | 詳細結果テーブルの生成（JSeM評価用）
+generateResultsTableJSeM :: [ProofSearchEvalResult] -> TL.Text
+generateResultsTableJSeM results = TL.unlines $
+  [ "\\begin{longtable}{lccccc}"
+  , "\\toprule"
+  , "\\textbf{JSeM ID} & \\textbf{Normal Time} & \\textbf{Normal OK} & \\textbf{Neural Time} & \\textbf{Neural OK} & \\textbf{Speedup} \\\\"
+  , "\\midrule"
+  , "\\endhead"
+  ] ++ map row results ++
+  [ "\\bottomrule"
+  , "\\end{longtable}"
+  ]
+  where
+    b2mark True  = "\\checkmark"
+    b2mark False = "$\\times$"
+    row r = TL.concat
+      [ escapeTeX (TL.pack (pseJsemId r)), " & "
+      , formatTimeShort (pseNormalTime r), " & "
+      , TL.pack (b2mark (pseNormalSuccess r)), " & "
+      , formatTimeShort (pseNeuralTime r), " & "
+      , TL.pack (b2mark (pseNeuralSuccess r)), " & "
+      , TL.pack (printf "%.2fx" (speedup r))
+      , " \\\\"
+      ]
+      where
+        speedup x =
+          let nt = realToFrac (pseNeuralTime x) :: Double
+              tt = realToFrac (pseNormalTime x) :: Double
+          in if nt > 0 then tt / nt else 0
+
+-- | TeX本文の生成（JSeM評価用）
+generateTexContentJSeM :: ProverConfig -> String -> FilePath -> [ProofSearchEvalResult] -> TL.Text
+generateTexContentJSeM config sessionId modelDir results = TL.unlines
+  [ "\\documentclass[a4paper,10pt]{article}"
+  , "\\usepackage[utf8]{inputenc}"
+  , "\\usepackage{booktabs}"
+  , "\\usepackage{longtable}"
+  , "\\usepackage{geometry}"
+  , "\\usepackage{xcolor}"
+  , "\\usepackage{colortbl}"
+  , "\\geometry{margin=1.5cm}"
+  , ""
+  , "\\title{JSeM Proof Search Evaluation Report}"
+  , "\\author{jsem-train-eval}"
+  , "\\date{\\today}"
+  , ""
+  , "\\begin{document}"
+  , "\\maketitle"
+  , ""
+  , "\\section{Configuration}"
+  , "\\begin{itemize}"
+  , "\\item maxDepth: " <> TL.pack (show (cfgMaxDepth config))
+  , "\\item maxTime: " <> TL.pack (show (cfgMaxTime config)) <> " ms"
+  , "\\item Session ID: \\texttt{" <> escapeTeX (TL.pack sessionId) <> "}"
+  , "\\item Output Directory: \\texttt{" <> escapeTeX (TL.pack modelDir) <> "}"
+  , "\\end{itemize}"
+  , ""
+  , "\\section{Summary}"
+  , generateSummaryTexJSeM results
+  , ""
+  , "\\section{Detailed Results}"
+  , generateResultsTableJSeM results
+  , ""
+  , "\\end{document}"
+  ]
+
+-- | TeXレポートを書き出し
+writeTexReportJSeM :: FilePath -> ProverConfig -> String -> [ProofSearchEvalResult] -> IO ()
+writeTexReportJSeM outputDir config sessionId results = do
+  let texFilename = outputDir </> ("proof-search-eval-report_" ++ sessionId ++ ".tex")
+  TL.writeFile texFilename (generateTexContentJSeM config sessionId outputDir results)
+  putStrLn $ "TeX report written to: " ++ texFilename
 
 -- ============================================
 -- メイン関数
@@ -625,7 +819,7 @@ main = do
   
   -- 学習データ（Token, RuleLabel）を分割
   splitedData <- splitByLabel (zip constructorData ruleList)
-  (trainData, validData, testData) <- smoothData splitedData Nothing
+  (trainData, validData, testData) <- smoothData splitedData (Just 2000)
   
   putStrLn $ "Training data (judgment-rule pairs): " ++ show (length trainData)
   putStrLn $ "Validation data (judgment-rule pairs): " ++ show (length validData)
@@ -693,6 +887,10 @@ main = do
   putStrLn $ "Model saved to: " ++ modelFileName
   putStrLn $ "FrequentWords saved to: " ++ frequentWordsFileName
   putStrLn $ "Learning curve saved to: " ++ graphFileName
+
+  -- 以降の成果物保存場所の案内
+  putStrLn $ "Proof trees will be saved under: " ++ (newFolderPath </> "proofTrees")
+  putStrLn $ "Queries will be saved under:     " ++ (newFolderPath </> "queries")
   
   -- テストデータに対する予測評価（分類精度）
   evalResult <- evaluateModel device trainedModel testData biDirectional
@@ -724,7 +922,7 @@ main = do
       neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional delimiterToken
   putStrLn "Model loaded successfully."
   
-  -- テスト問題に対して証明探索を実行
+  -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
   let maxTestCases = 50  -- 最大テストケース数
       testCases = take maxTestCases testProblems
   
@@ -733,7 +931,7 @@ main = do
   
   evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
     putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
-    result <- try $ evaluateOneProblem proverConfig neuralWaniFunc problem
+    result <- try $ evaluateOneProblem proverConfig neuralWaniFunc newFolderPath idx problem
     case result of
       Right (Just r) -> do
         putStrLn $ "Normal: " ++ TL.unpack (formatTimeNominal (pseNormalTime r)) ++ 
@@ -755,6 +953,10 @@ main = do
   
   -- レポートをファイルに保存
   saveProofSearchReport newFolderPath proverConfig successfulResults
+
+  -- TeXレポートを出力（evaluate/Main.hs を参考に構成）
+  let sessionId = "D" ++ show (cfgMaxDepth proverConfig) ++ "T" ++ show (cfgMaxTime proverConfig) ++ "_" ++ timeString
+  writeTexReportJSeM newFolderPath proverConfig sessionId successfulResults
   
   putStrLn ""
   putStrLn "=== Done ==="
