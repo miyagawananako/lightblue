@@ -227,7 +227,7 @@ main = do
   putStrLn ""
   
   -- 各ファイルを処理して結果を集計
-  results <- mapM (processOneFile config sessionId) fofFiles
+  results <- mapM (processOneFile config sessionId getPrioritizedRules) fofFiles
   
   -- 成功した結果とスキップされたファイルを分離
   let (skipped, evaluated) = partitionResults results
@@ -261,8 +261,8 @@ getFilesFromSubDir subDir = do
   return $ map (\f -> (subDir, f)) fofFiles
 
 -- | 1つのファイルを処理する
-processOneFile :: ProverConfig -> String -> (FilePath, FilePath) -> IO (Either SkippedFile EvalResult)
-processOneFile config sessionId (subDir, filename) = do
+processOneFile :: ProverConfig -> String -> Maybe (Goal -> [BR.RuleLabel] -> [BR.RuleLabel]) -> (FilePath, FilePath) -> IO (Either SkippedFile EvalResult)
+processOneFile config sessionId getPrioritizedRules (subDir, filename) = do
   let filepath = tptpDir </> subDir </> filename
       filenameText = T.pack (subDir </> filename)
   info <- processFile filepath
@@ -314,14 +314,15 @@ processOneFile config sessionId (subDir, filename) = do
       -- Proverの設定（コマンドライン引数から取得した値を使用）
       let normalSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
-                QT.maxTime = Just (cfgMaxTime config)
+                QT.maxTime = Just (cfgMaxTime config),
+                QT.debugDepth = cfgMaxDepth config
                 }
 
-      getPrioritizedRules <- neuralWaniBuilder
       -- NeuralWani用の設定（将来的にニューラルネットワークを有効化）
       let neuralSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
                 QT.maxTime = Just (cfgMaxTime config),
+                QT.debugDepth = cfgMaxDepth config,
                 QT.neuralWani = Just getPrioritizedRules
                 }
       

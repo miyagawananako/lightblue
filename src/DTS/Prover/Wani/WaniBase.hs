@@ -106,7 +106,9 @@ instance Show Setting where
         ++ ", sStatus = " ++ show (sStatus s)
         ++ ", ruleConHojo = " ++ show (ruleConHojo s)
         ++ ", timeLimit = " ++ show (timeLimit s)
-        ++ ", enableneuralDTS = " ++ show (enableneuralDTS s)
+        ++ ", oracle = " ++ (if M.isJust (oracle s) then "Just <function>" else "Nothing")
+        ++ ", oracleThreshold = " ++ show (oracleThreshold s)
+        ++ ", enableEq = " ++ show (enableEq s)
         ++ ", getPrioritizedRules = " ++ (if M.isJust (getPrioritizedRules s) then "Just <function>" else "Nothing")
         ++ "}"
 
@@ -119,7 +121,9 @@ instance Eq Setting where
           && sStatus s1 == sStatus s2
           && ruleConHojo s1 == ruleConHojo s2
           && timeLimit s1 == timeLimit s2
-          && enableneuralDTS s1 == enableneuralDTS s2
+          && M.isJust (oracle s1) == M.isJust (oracle s2)
+          && oracleThreshold s1 == oracleThreshold s2
+          && enableEq s1 == enableEq s2
           && M.isJust (getPrioritizedRules s1) == M.isJust (getPrioritizedRules s2)
 
 data Result = Result
