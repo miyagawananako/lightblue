@@ -6,11 +6,11 @@ category:     CCG Parser, Dependent Type Prover
 synopsis:     A Japanese CCG parser with DTS
 license:      AllRightsReserved
 license-file: LICENSE
-copyright:    Daisuke Bekki
-author:       Daisuke Bekki and Bekki Laboratory
-maintainer:   Daisuke Bekki
-stability:    beta
-ghc-options:  -Wall
+copyright: Daisuke Bekki
+author: Daisuke Bekki and Bekki Laboratory
+maintainer: Daisuke Bekki
+stability: beta
+ghc-options: -Wall
 
 extra-source-files:
   - README.md
@@ -70,11 +70,17 @@ dependencies:
   - http-client-tls >= 0.3.5
   - dotenv >= 0.0.4
   - deepseq
+  - dlist >= 0.8
+  - hasktorch >= 0.2
+  - hasktorch-tools
 
 library:
   source-dirs: src
   default-extensions:
-  - OverloadedStrings
+    - OverloadedStrings
+  build-tools:
+    - alex
+    - happy
   exposed-modules:
   - Parser.ChartParser
   - Parser.CCG
@@ -116,6 +122,17 @@ library:
   - DTS.Prover.Wani.BackwardWithRules
   - DTS.Prover.Wani.Arrowterm
   - DTS.Prover.Wani.Prove
+  - DTS.Prover.NeuralWani.Builder
+  - DTS.Prover.NeuralWani.Forward
+  - DTS.Prover.NeuralWani.SplitJudgment
+  - TPTP.Syntax
+  - TPTP.FormulaSyntax
+  - TPTP.Lexer
+  - TPTP.Parser
+  - TPTP.FormulaLexer
+  - TPTP.FormulaParser
+  - TPTP.Convert
+  - TPTPInfo
 
 executables:
   lightblue:
@@ -124,14 +141,30 @@ executables:
     ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
 
+  builder-exe:
+    source-dirs: app/builder
+    main: Main.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    dependencies:
+      - lightblue
+      - text
+
+  evaluate-exe:
+    source-dirs: app/evaluate
+    main: Main.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
+    dependencies:
+      - lightblue
+      - text
+
 tests:
   testJumanDicSettings:
-    source-dirs:  test/Juman
-    main:         testJumanDicSettings.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: test/Juman
+    main: testJumanDicSettings.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue
   typeCheck:
-    source-dirs:  test/DTS
-    main:         testTypeChecker.hs
-    ghc-options:  [-threaded, -rtsopts, -with-rtsopts=-N]
+    source-dirs: test/DTS
+    main: testTypeChecker.hs
+    ghc-options: [-threaded, -rtsopts, -with-rtsopts=-N]
     dependencies: lightblue

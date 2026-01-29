@@ -30,6 +30,7 @@ module DTS.Prover.Wani.WaniBase (
     conFromGoal,
     termFromGoal,
     typesFromGoal,
+    goal2NeuralWaniJudgement,
     Rule(..),
     SubGoal(..),
     goalFromSubGoal,
@@ -55,6 +56,7 @@ import qualified DTS.DTTdeBruijn as DdB  -- UDTT
 import qualified DTS.Prover.Wani.Arrowterm as A
 import qualified Interface.Tree as UDT
 import qualified DTS.QueryTypes as QT
+import {-# SOURCE #-} qualified DTS.Prover.Wani.BackwardRules as BR
 
 import qualified Data.Text.Lazy as T 
 import qualified Data.List as L 
@@ -91,8 +93,38 @@ data Setting = Setting
    timeLimit :: M.Maybe Time.UTCTime,
    oracle :: Maybe (DdB.ConName -> DdB.ConName -> Float),
    oracleThreshold :: Float,
-   enableEq :: Bool
-   } -- deriving (Show,Eq)
+   enableEq :: Bool,
+   getPrioritizedRules :: M.Maybe (Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
+   }
+
+instance Show Setting where
+  show s = "Setting {mode = " ++ show (mode s) 
+        ++ ", falsum = " ++ show (falsum s)
+        ++ ", maxdepth = " ++ show (maxdepth s)
+        ++ ", maxtime = " ++ show (maxtime s)
+        ++ ", debug = " ++ show (debug s)
+        ++ ", sStatus = " ++ show (sStatus s)
+        ++ ", ruleConHojo = " ++ show (ruleConHojo s)
+        ++ ", timeLimit = " ++ show (timeLimit s)
+        ++ ", oracle = " ++ (if M.isJust (oracle s) then "Just <function>" else "Nothing")
+        ++ ", oracleThreshold = " ++ show (oracleThreshold s)
+        ++ ", enableEq = " ++ show (enableEq s)
+        ++ ", getPrioritizedRules = " ++ (if M.isJust (getPrioritizedRules s) then "Just <function>" else "Nothing")
+        ++ "}"
+
+instance Eq Setting where
+  s1 == s2 = mode s1 == mode s2
+          && falsum s1 == falsum s2
+          && maxdepth s1 == maxdepth s2
+          && maxtime s1 == maxtime s2
+          && debug s1 == debug s2
+          && sStatus s1 == sStatus s2
+          && ruleConHojo s1 == ruleConHojo s2
+          && timeLimit s1 == timeLimit s2
+          && M.isJust (oracle s1) == M.isJust (oracle s2)
+          && oracleThreshold s1 == oracleThreshold s2
+          && enableEq s1 == enableEq s2
+          && M.isJust (getPrioritizedRules s1) == M.isJust (getPrioritizedRules s2)
 
 data Result = Result
   {trees :: [UDT.Tree A.Arrowrule A.AJudgment],
@@ -111,7 +143,7 @@ statusDef :: Status
 statusDef = Status{failedlst=[],usedMaxDepth = 0,deduceNgLst=[],usedDisJoint=[],allProof = True}
 
 settingDef :: Setting
-settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",oracle=M.Nothing,oracleThreshold=0.5,enableEq=True}
+settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,oracle=M.Nothing,oracleThreshold=0.5,enableEq=True,getPrioritizedRules = M.Nothing}
 
 resultDef :: Result
 resultDef = Result{trees = [],errMsg = "",rStatus = statusDef}
