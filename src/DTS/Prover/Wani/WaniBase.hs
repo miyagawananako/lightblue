@@ -91,7 +91,9 @@ data Setting = Setting
    sStatus :: Status,
    ruleConHojo :: String,
    timeLimit :: M.Maybe Time.UTCTime,
-   enableneuralDTS :: Bool,
+   oracle :: Maybe (DdB.ConName -> DdB.ConName -> Float),
+   oracleThreshold :: Float,
+   enableEq :: Bool,
    getPrioritizedRules :: M.Maybe (Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
    }
 
@@ -104,7 +106,9 @@ instance Show Setting where
         ++ ", sStatus = " ++ show (sStatus s)
         ++ ", ruleConHojo = " ++ show (ruleConHojo s)
         ++ ", timeLimit = " ++ show (timeLimit s)
-        ++ ", enableneuralDTS = " ++ show (enableneuralDTS s)
+        ++ ", oracle = " ++ (if M.isJust (oracle s) then "Just <function>" else "Nothing")
+        ++ ", oracleThreshold = " ++ show (oracleThreshold s)
+        ++ ", enableEq = " ++ show (enableEq s)
         ++ ", getPrioritizedRules = " ++ (if M.isJust (getPrioritizedRules s) then "Just <function>" else "Nothing")
         ++ "}"
 
@@ -117,7 +121,9 @@ instance Eq Setting where
           && sStatus s1 == sStatus s2
           && ruleConHojo s1 == ruleConHojo s2
           && timeLimit s1 == timeLimit s2
-          && enableneuralDTS s1 == enableneuralDTS s2
+          && M.isJust (oracle s1) == M.isJust (oracle s2)
+          && oracleThreshold s1 == oracleThreshold s2
+          && enableEq s1 == enableEq s2
           && M.isJust (getPrioritizedRules s1) == M.isJust (getPrioritizedRules s2)
 
 data Result = Result
@@ -137,7 +143,7 @@ statusDef :: Status
 statusDef = Status{failedlst=[],usedMaxDepth = 0,deduceNgLst=[],usedDisJoint=[],allProof = True}
 
 settingDef :: Setting
-settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,enableneuralDTS=False,getPrioritizedRules = M.Nothing}
+settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,oracle=M.Nothing,oracleThreshold=0.5,enableEq=True,getPrioritizedRules = M.Nothing}
 
 resultDef :: Result
 resultDef = Result{trees = [],errMsg = "",rStatus = statusDef}
