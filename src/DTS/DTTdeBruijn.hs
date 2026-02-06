@@ -43,7 +43,7 @@ import Interface.HTML                 --lightblue
 import DTS.GeneralTypeQuery           --lightblue
 
 -- | 'Proj' 'Fst' m is the first projection of m, while 'Proj' 'Snd' m is the second projection of m.
-data Selector = Fst | Snd deriving (Eq, Show, G.Generic, Store, NFData)
+data Selector = Fst | Snd deriving (Eq, Show, G.Generic, Store, NFData, Ord)
 
 -- | Print a selector as "1" or "2".
 instance SimpleText Selector where
@@ -94,7 +94,7 @@ data Preterm =
   | Refl Preterm Preterm           -- ^ refl
   | Idpeel Preterm Preterm Preterm -- ^ idpeel P E R
   -- | ToDo: add First Universe
-  deriving (Eq, G.Generic, NFData)
+  deriving (Eq, G.Generic, NFData, Ord)
 
 makeStore ''LazyT.Text
 
@@ -352,7 +352,7 @@ data Judgment = Judgment {
   , contxt :: Context  -- ^ A context \Gamma in \Gamma \vdash M:A
   , trm :: Preterm     -- ^ A term M in \Gamma \vdash M:A
   , typ :: Preterm     -- ^ A type A in \Gamma \vdash M:A
-  } deriving (Eq, G.Generic)
+  } deriving (Eq, G.Generic, Ord)
 
 embedJudgment :: Judgment -> GeneralTypeQuery Signature Context Preterm Preterm
 embedJudgment (Judgment sig cxt trm typ) = GeneralTypeQuery sig cxt (Term trm) (Term typ)

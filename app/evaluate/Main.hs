@@ -21,6 +21,8 @@ import qualified ListT
 import qualified DTS.QueryTypes as QT
 import qualified DTS.DTTdeBruijn as DTT
 import qualified DTS.Prover.Wani.Prove as Prove
+import qualified DTS.Prover.Wani.BackwardRules as BR
+import qualified DTS.Prover.Wani.WaniBase as WB
 import qualified Interface.Tree as I
 import qualified Interface.Text as IText
 
@@ -225,6 +227,8 @@ main = do
   -- Found 376 FOF files (with '+' in filename)！！
   putStrLn $ "Found " ++ show (length fofFiles) ++ " FOF files (with '+' in filename)"
   putStrLn ""
+
+  getPrioritizedRules <- neuralWaniBuilder
   
   -- 各ファイルを処理して結果を集計
   results <- mapM (processOneFile config sessionId getPrioritizedRules) fofFiles
@@ -261,7 +265,7 @@ getFilesFromSubDir subDir = do
   return $ map (\f -> (subDir, f)) fofFiles
 
 -- | 1つのファイルを処理する
-processOneFile :: ProverConfig -> String -> Maybe (Goal -> [BR.RuleLabel] -> [BR.RuleLabel]) -> (FilePath, FilePath) -> IO (Either SkippedFile EvalResult)
+processOneFile :: ProverConfig -> String -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel]) -> (FilePath, FilePath) -> IO (Either SkippedFile EvalResult)
 processOneFile config sessionId getPrioritizedRules (subDir, filename) = do
   let filepath = tptpDir </> subDir </> filename
       filenameText = T.pack (subDir </> filename)
@@ -314,15 +318,13 @@ processOneFile config sessionId getPrioritizedRules (subDir, filename) = do
       -- Proverの設定（コマンドライン引数から取得した値を使用）
       let normalSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
-                QT.maxTime = Just (cfgMaxTime config),
-                QT.debugDepth = cfgMaxDepth config
+                QT.maxTime = Just (cfgMaxTime config)
                 }
 
       -- NeuralWani用の設定（将来的にニューラルネットワークを有効化）
       let neuralSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
                 QT.maxTime = Just (cfgMaxTime config),
-                QT.debugDepth = cfgMaxDepth config,
                 QT.neuralWani = Just getPrioritizedRules
                 }
       
