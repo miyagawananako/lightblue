@@ -263,8 +263,8 @@ deduce' goal depth setting
                       ++ [BR.Efq | arrowType /= A.Conclusion DdB.Bot && WB.mode setting == WB.WithEFQ && (arrowType /= (A.Conclusion DdB.Kind))]
 
                     -- formation rules are removed from the set passed to the prioritizer
-                    formationRules = [BR.PiForm] ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.DisjForm] else [])
-                    nonFormationRules = filter (\r -> not (r `elem` formationRules)) availableRules
+                    formationRulesAndMembership = [BR.PiForm] ++ (if arrowType /= (A.Conclusion DdB.Kind) then [BR.SigmaForm,BR.EqForm,BR.Membership,BR.DisjForm] else [])
+                    nonFormationRules = filter (\r -> not (r `elem` formationRulesAndMembership)) availableRules
 
                     -- Call BR.rule on formation rules and non-formation (prioritized) rules.
                     -- We sequence both groups and pass the combined results to
@@ -272,7 +272,7 @@ deduce' goal depth setting
                     -- thus considered but were not part of the prioritization input.
                     -- prioritizedRules is computed lazily inside the list concatenation
                     -- to avoid calling getPrioritizedRules unless actually needed.
-                    ruleCallList = (map (\r -> BR.rule r goal setting) formationRules) ++ 
+                    ruleCallList = (map (\r -> BR.rule r goal setting) formationRulesAndMembership) ++ 
                       (let prioritizedRules = case WB.getPrioritizedRules setting of
                              M.Just getPrioritizedRules -> getPrioritizedRules goal nonFormationRules
                              M.Nothing -> nonFormationRules

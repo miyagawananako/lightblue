@@ -41,15 +41,19 @@ import System.Environment (getArgs)
 import System.Mem (performGC, performMajorGC)
 import Text.Printf (printf)
 import qualified ListT
+import qualified Interface.Tree as I
+import qualified Interface.Text as IText
+import Data.Maybe (mapMaybe, catMaybes)
+import qualified Data.Map.Strict as Map
+import Data.IORef (newIORef, readIORef, modifyIORef')
+import System.IO.Unsafe (unsafePerformIO)
 
 import qualified DTS.QueryTypes as QT
 import qualified DTS.DTTdeBruijn as DTT
 import qualified DTS.Prover.Wani.BackwardRules as BR
 import qualified DTS.Prover.Wani.Prove as Prove
 import qualified DTS.Prover.Wani.WaniBase as WB
-import qualified Interface.Tree as I
-import qualified Interface.Text as IText
-import Data.Maybe (mapMaybe, catMaybes)
+import qualified DTS.DTTdeBruijn as DdB
 
 -- hasktorch関連のインポート
 import Torch.Tensor       (Tensor(..), asValue, asTensor, toDevice)
@@ -417,11 +421,21 @@ writeProofTrees baseDir baseName trees = do
 buildNeuralWani :: Device -> Params -> WordMap -> Bool -> DelimiterToken 
                 -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
 buildNeuralWani device model wordMap biDirectional delimiterToken = 
-  \goal availableRuleLabels ->
+  let cacheRef = unsafePerformIO $ newIORef (Map.empty :: Map.Map DdB.Judgment [BR.RuleLabel])
+  in \goal availableRuleLabels ->
     let maybeJudgment = WB.goal2NeuralWaniJudgement goal
     in case maybeJudgment of
       Just judgment ->
-        let predictedRuleLabels = predictRule device model judgment biDirectional wordMap delimiterToken
+        let predictedRuleLabels = unsafePerformIO $ do
+              cache <- readIORef cacheRef
+              case Map.lookup judgment cache of
+                Just cachedResult -> 
+                  return cachedResult
+                Nothing -> do
+                  let result = predictRule device model judgment biDirectional wordMap delimiterToken
+                  modifyIORef' cacheRef (Map.insert judgment result)
+                  return result
+            
             filteredRuleLabels = filter (`elem` availableRuleLabels) predictedRuleLabels
         in filteredRuleLabels
       Nothing -> availableRuleLabels
