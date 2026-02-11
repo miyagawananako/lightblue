@@ -23,7 +23,7 @@ import Control.DeepSeq (rnf)
 import Data.Char (isAlphaNum)
 import Control.Exception (evaluate, try, SomeException)
 import System.Random.Shuffle (shuffleM)
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import System.FilePath ((</>))
 import qualified Data.Text.Lazy as TL     --text
 import qualified Data.Text.Lazy.IO as TL  --text
@@ -44,7 +44,6 @@ import qualified ListT
 import qualified Interface.Tree as I
 import qualified Interface.Text as IText
 import Data.Maybe (mapMaybe, catMaybes)
-import qualified Data.Map.Strict as Map
 import Data.IORef (newIORef, readIORef, modifyIORef')
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -157,14 +156,14 @@ loadJSeMProblemsFromFile path = do
     then do
       -- ディレクトリの場合: all.bin があればそれを読み込み、なければ個別ファイルを統合
       let allBinPath = path </> "all.bin"
-      allBinExists <- doesDirectoryExist allBinPath  -- ファイルの存在チェックは簡易的
+      allBinExists <- doesFileExist allBinPath  -- ファイルの存在チェックは簡易的
       if not allBinExists
         then do
           -- all.binがあれば優先的に使用
           bytes <- try (B.readFile allBinPath) :: IO (Either SomeException B.ByteString)
           case bytes of
             Right bs -> case decode bs of
-              Left err -> loadFromPerFile path  -- デコード失敗時は個別ファイルから読み込み
+              Left _ -> loadFromPerFile path  -- デコード失敗時は個別ファイルから読み込み
               Right problems -> return problems
             Left _ -> loadFromPerFile path  -- ファイルなければ個別ファイルから読み込み
         else loadFromPerFile path
@@ -186,13 +185,6 @@ loadJSeMFileData path = do
   case decode bytes of
     Left err -> error $ "Failed to decode JSeMFileData from " ++ path ++ ": " ++ show err
     Right fileData -> return fileData
-
--- | 指定したJSeMファイルのデータをディレクトリから読み込み
-loadJSeMProblemsFromDir :: FilePath -> String -> IO [JSeMProblemData]
-loadJSeMProblemsFromDir outputDir fileName = do
-  let filePath = outputDir </> fileName ++ ".bin"
-  fileData <- loadJSeMFileData filePath
-  return $ jfdProblems fileData
 
 -- | ディレクトリから全てのJSeMファイルのデータを読み込み
 loadAllJSeMProblemsFromDir :: FilePath -> IO [(String, [JSeMProblemData])]
@@ -239,15 +231,13 @@ smoothData splittedData threshold = smoothData' splittedData [] [] []
       smoothData' remainingData (trainDataAcc ++ trainData) (validDataAcc ++ validData) (testDataAcc ++ testData)
 
 -- | JSeM問題をシャッフルして分割する関数（問題単位で分割）
-splitJSeMProblems :: [JSeMProblemData] -> IO ([JSeMProblemData], [JSeMProblemData], [JSeMProblemData])
+splitJSeMProblems :: [JSeMProblemData] -> IO ([JSeMProblemData], [JSeMProblemData])
 splitJSeMProblems problems = do
   shuffled <- shuffleM problems
   let n = length shuffled
-      nTrain = n * 8 `div` 10
-      nValid = (n - nTrain) * 5 `div` 10
-      (train, rest) = splitAt nTrain shuffled
-      (valid, test) = splitAt nValid rest
-  return (train, valid, test)
+      nTrainAndValid = n * 9 `div` 10
+      (trainAndValid, test) = splitAt nTrainAndValid shuffled
+  return (trainAndValid, test)
 
 -- | 時間をフォーマットする
 formatTimeNominal :: NominalDiffTime -> TL.Text
@@ -301,8 +291,8 @@ trainModel device hyperParams trainData validData biDirectional iter numberOfBat
     let (trainLoss', validLoss') = unzip lossPair
         avgTrainLoss = sum trainLoss' / fromIntegral (length trainLoss')
         avgValidLoss = sum validLoss' / fromIntegral (length validLoss')
-    print $ "epoch " ++ show epoc ++ " avgTrainLoss " ++ show avgTrainLoss ++ " avgValidLoss " ++ show avgValidLoss
-    print "----------------"
+    putStrLn $ "epoch " ++ show epoc ++ " avgTrainLoss " ++ show avgTrainLoss ++ " avgValidLoss " ++ show avgValidLoss
+    putStrLn "----------------"
 
     return (trainedModel', (avgTrainLoss, avgValidLoss))
 
@@ -323,7 +313,7 @@ evaluateModel device model testData biDirectional = do
         predictedLabel = toEnum (asValue predictedClassIndex :: Int) :: BR.RuleLabel
     return (predictedLabel, groundTruthLabel, isCorrect)
   
-  let predictions = map (\(pred, gt, _) -> (pred, gt)) results
+  let predictions = map (\(p, gt, _) -> (p, gt)) results
       correctFlags = map (\(_, _, correct) -> correct) results
       numCorrect = length $ filter id correctFlags
       accuracy = fromIntegral numCorrect / fromIntegral (length correctFlags)
@@ -560,6 +550,14 @@ saveProofSearchReport outputDir config results = do
       normalSuccessCount = length $ filter pseNormalSuccess results
       neuralSuccessCount = length $ filter pseNeuralSuccess results
       bothSuccess = filter (\r -> pseNormalSuccess r && pseNeuralSuccess r) results
+      avgNormalAll = if totalTests == 0 then 0 else sum (map pseNormalTime results) / fromIntegral totalTests
+      avgNeuralAll = if totalTests == 0 then 0 else sum (map pseNeuralTime results) / fromIntegral totalTests
+      speedupAll :: Maybe Double
+      speedupAll =
+        let nt = realToFrac avgNeuralAll :: Double
+            tt = realToFrac avgNormalAll :: Double
+        in if totalTests == 0 || nt == 0 then Nothing else Just (tt / nt)
+      speedupAllStr = "  Speedup (all avg): " ++ maybe "N/A" (\v -> show (fromIntegral (round (v * 100) :: Integer) / 100 :: Double) ++ "x") speedupAll
       
   let reportLines =
         [ "=== Proof Search Evaluation Report ==="
@@ -572,6 +570,7 @@ saveProofSearchReport outputDir config results = do
         , "  Total tests: " ++ show totalTests
         , "  Normal Prover success: " ++ show normalSuccessCount ++ "/" ++ show totalTests
         , "  NeuralWani Prover success: " ++ show neuralSuccessCount ++ "/" ++ show totalTests
+        , speedupAllStr
         , ""
         ] ++
         (if null bothSuccess
@@ -580,7 +579,7 @@ saveProofSearchReport outputDir config results = do
           let avgNormalTime = sum (map pseNormalTime bothSuccess) / fromIntegral (length bothSuccess)
               avgNeuralTime = sum (map pseNeuralTime bothSuccess) / fromIntegral (length bothSuccess)
               speedup = realToFrac avgNormalTime / realToFrac avgNeuralTime :: Double
-              speedupStr = "  Speedup: " ++ show (fromIntegral (round (speedup * 100)) / 100 :: Double) ++ "x"
+              speedupStr = "  Speedup: " ++ show (fromIntegral (round (speedup * 100) :: Integer) / 100 :: Double) ++ "x"
           in [ "Average Time (both succeeded: " ++ show (length bothSuccess) ++ " tests):"
              , "  Normal Prover: " ++ TL.unpack (formatTimeNominal avgNormalTime)
              , "  NeuralWani Prover: " ++ TL.unpack (formatTimeNominal avgNeuralTime)
@@ -625,9 +624,15 @@ generateSummaryTexJSeM results =
       avgNeuralAll = if totalTests == 0 then 0 else sum (map pseNeuralTime results) / fromIntegral totalTests
       avgNormalBoth = if null bothSuccess then 0 else sum (map pseNormalTime bothSuccess) / fromIntegral (length bothSuccess)
       avgNeuralBoth = if null bothSuccess then 0 else sum (map pseNeuralTime bothSuccess) / fromIntegral (length bothSuccess)
+      avgSpeedupAll :: Maybe Double
+      avgSpeedupAll =
+        if totalTests == 0 || avgToDouble avgNeuralAll == 0
+          then Nothing
+          else Just $ avgToDouble avgNormalAll / avgToDouble avgNeuralAll
       avgSpeedupBoth :: Maybe Double
       avgSpeedupBoth = if null bothSuccess then Nothing else Just $ avgToDouble avgNormalBoth / avgToDouble avgNeuralBoth
       avgToDouble x = realToFrac x :: Double
+      speedupAllStr = maybe "N/A" (TL.pack . printf "%.2fx") avgSpeedupAll
       speedupStr = maybe "N/A" (TL.pack . printf "%.2fx") avgSpeedupBoth
   in TL.unlines
     [ "\\begin{tabular}{ll}"
@@ -640,6 +645,7 @@ generateSummaryTexJSeM results =
     , "\\midrule"
     , "Avg. Normal time (all) & " <> formatTimeNominal avgNormalAll <> " \\\\"
     , "Avg. Neural time (all) & " <> formatTimeNominal avgNeuralAll <> " \\\\"
+    , "Speedup (Normal/Neural; all avg) & " <> speedupAllStr <> " \\\\" 
     , "Avg. Normal time (both ok) & " <> formatTimeNominal avgNormalBoth <> " \\\\"
     , "Avg. Neural time (both ok) & " <> formatTimeNominal avgNeuralBoth <> " \\\\"
     , "Speedup (Normal/Neural; both ok avg) & " <> speedupStr <> " \\\\"
@@ -687,6 +693,7 @@ generateTexContentJSeM config sessionId modelDir results = TL.unlines
   , "\\usepackage{geometry}"
   , "\\usepackage{xcolor}"
   , "\\usepackage{colortbl}"
+  , "\\usepackage{amssymb}"
   , "\\geometry{margin=1.5cm}"
   , ""
   , "\\title{JSeM Proof Search Evaluation Report}"
@@ -729,8 +736,21 @@ main = do
   args <- getArgs
   
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth maxTime
-  let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, maxTime) = case args of
+  -- Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold]
+  let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold) = case args of
+        [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
+          ( a0                    -- JSeMProblemDataファイルパス
+          , read a1 :: Bool       -- 双方向LSTM
+          , read a2 :: Int        -- 埋め込み次元
+          , read a3 :: Int        -- 隠れ層サイズ
+          , read a4 :: Int        -- LSTM層数
+          , read a5 :: Bool       -- バイアス
+          , read a6 :: Float      -- 学習率
+          , read a7 :: Int        -- バッチサイズ
+          , read a8 :: Int        -- エポック数
+          , read a9 :: Int        -- maxDepth
+          , Nothing               -- threshold (optional)
+          )
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] ->
           ( a0                    -- JSeMProblemDataファイルパス
           , read a1 :: Bool       -- 双方向LSTM
@@ -742,12 +762,13 @@ main = do
           , read a7 :: Int        -- バッチサイズ
           , read a8 :: Int        -- エポック数
           , read a9 :: Int        -- maxDepth
-          , read a10 :: Int       -- maxTime
+          , Just (read a10 :: Int) -- threshold (optional)
           )
         _ -> error $ unlines
-          [ "Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth maxTime"
+          [ "Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold]"
           , ""
-          , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 6000"
+          , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9"
+          , "Example (with threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000"
           , ""
           , "Arguments:"
           , "  jsemDataPath  : String - Path to JSeMProblemData binary file (created by collectTypeCheckTrees-exe)"
@@ -760,7 +781,7 @@ main = do
           , "  batchSize     : Int    - Batch size"
           , "  epochs        : Int    - Number of epochs"
           , "  maxDepth      : Int    - Max proof search depth"
-          , "  maxTime       : Int    - Max proof search time (ms)"
+          , "  threshold     : Int    - Optional cap per label for training (omit for no cap)"
           ]
   
   putStrLn "=== JSeM Train & Evaluate ==="
@@ -781,11 +802,7 @@ main = do
   allProblems <- loadJSeMProblemsFromFile jsemDataPath
   
   putStrLn $ "Loaded " ++ show (length allProblems) ++ " JSeM problems"
-  
-  -- (Judgment, Rule)ペアを全て抽出
-  let allJudgmentRules = concatMap jspJudgmentRules allProblems
-  putStrLn $ "Total judgment-rule pairs: " ++ show (length allJudgmentRules)
-  
+
   -- 推論問題を持つ問題のみ抽出
   let problemsWithQuery = filter (not . null . jspInferenceQuery) allProblems
   putStrLn $ "Problems with inference query: " ++ show (length problemsWithQuery)
@@ -796,14 +813,22 @@ main = do
   putStrLn ""
   putStrLn "=== Phase 2: Preprocessing and Splitting Data ==="
   
-  let delimiterToken = Unused
+  let delimiterToken = Eo
       isIncludeF = False
       isOnlyBackwardRules = True
   
-  -- フィルタリング
+  -- JSeM問題単位で分割（評価用）
+  (trainAndValidProblems, testProblems) <- splitJSeMProblems problemsWithQuery
+  putStrLn $ "Train+Valid problems: " ++ show (length trainAndValidProblems)
+  putStrLn $ "Test problems: " ++ show (length testProblems)
+
+  let trainAndValidJudgmentRules = concatMap jspJudgmentRules trainAndValidProblems
+  putStrLn $ "Train+Valid judgment-rule pairs: " ++ show (length trainAndValidJudgmentRules)
+
+  -- フィルタリング（train+validのみ使用）
   let backwardDataset = if isOnlyBackwardRules
-                then filter (\(_, rule) -> elem rule backwardRules) allJudgmentRules
-                else allJudgmentRules
+                then filter (\(_, rule) -> elem rule backwardRules) trainAndValidJudgmentRules
+                else trainAndValidJudgmentRules
       filteredDataset = if isIncludeF
                 then backwardDataset
                 else filter (\(_, rule) -> rule `notElem` formationRules) backwardDataset
@@ -825,15 +850,9 @@ main = do
   let countedRules = countRule ruleList
   putStrLn $ "Rule distribution: " ++ show countedRules
   
-  -- JSeM問題単位で分割（評価用）
-  (trainProblems, validProblems, testProblems) <- splitJSeMProblems problemsWithQuery
-  putStrLn $ "Train problems: " ++ show (length trainProblems)
-  putStrLn $ "Valid problems: " ++ show (length validProblems)
-  putStrLn $ "Test problems: " ++ show (length testProblems)
-  
   -- 学習データ（Token, RuleLabel）を分割
   splitedData <- splitByLabel (zip constructorData ruleList)
-  (trainData, validData, testData) <- smoothData splitedData (Just 2000)
+  (trainData, validData, testData) <- smoothData splitedData threshold
   
   putStrLn $ "Training data (judgment-rule pairs): " ++ show (length trainData)
   putStrLn $ "Validation data (judgment-rule pairs): " ++ show (length validData)
@@ -912,18 +931,11 @@ main = do
   putStrLn $ "Classification Accuracy: " ++ show (erAccuracy evalResult)
   
   -- ============================================
-  -- Phase 5: 証明探索による速度評価
+  -- Phase 5: 証明探索による速度評価（時間制限 30000/60000/90000 を試す）
   -- ============================================
   putStrLn ""
   putStrLn "=== Phase 5: Proof Search Speed Evaluation ==="
-  
-  let proverConfig = ProverConfig
-        { cfgMaxDepth = maxDepth
-        , cfgMaxTime = maxTime
-        }
-  
-  putStrLn $ "Prover config: maxDepth=" ++ show maxDepth ++ ", maxTime=" ++ show maxTime
-  
+
   -- 保存したモデルをロードしてNeuralWani関数を構築
   putStrLn "Loading saved model for NeuralWani..."
   emptyModel <- sample hyperParams
@@ -935,42 +947,59 @@ main = do
   let loadedWordMap = buildWordMap loadedFrequentWords
       neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional delimiterToken
   putStrLn "Model loaded successfully."
-  
+
   -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
   let maxTestCases = 50  -- 最大テストケース数
       testCases = take maxTestCases testProblems
-  
-  putStrLn $ "Running " ++ show (length testCases) ++ " test cases..."
-  putStrLn ""
-  
-  evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
-    putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
-    result <- try $ evaluateOneProblem proverConfig neuralWaniFunc newFolderPath idx problem
-    case result of
-      Right (Just r) -> do
-        putStrLn $ "Normal: " ++ TL.unpack (formatTimeNominal (pseNormalTime r)) ++ 
-                   " (" ++ (if pseNormalSuccess r then "OK" else "FAIL") ++ ")" ++
-                   ", Neural: " ++ TL.unpack (formatTimeNominal (pseNeuralTime r)) ++
-                   " (" ++ (if pseNeuralSuccess r then "OK" else "FAIL") ++ ")"
-        return $ Just r
-      Right Nothing -> do
-        putStrLn "SKIP (no inference query)"
-        return Nothing
-      Left (e :: SomeException) -> do
-        putStrLn $ "ERROR: " ++ show e
-        return Nothing
-  
-  let successfulResults = catMaybes evalResults
-  
-  -- サマリーを表示
-  printEvalSummary successfulResults
-  
-  -- レポートをファイルに保存
-  saveProofSearchReport newFolderPath proverConfig successfulResults
+      timeLimits = [30000, 60000, 90000]
 
-  -- TeXレポートを出力（evaluate/Main.hs を参考に構成）
-  let sessionId = "D" ++ show (cfgMaxDepth proverConfig) ++ "T" ++ show (cfgMaxTime proverConfig) ++ "_" ++ timeString
-  writeTexReportJSeM newFolderPath proverConfig sessionId successfulResults
+  let testCasesFileName = newFolderPath </> "testCases.bin"
+  B.writeFile testCasesFileName (encode testCases)
+  putStrLn $ "Test cases saved to: " ++ testCasesFileName
+
+  forM_ timeLimits $ \timeLimit -> do
+    putStrLn ""
+    putStrLn $ "--- Time limit: " ++ show timeLimit ++ " ms ---"
+
+    let proverConfig = ProverConfig
+          { cfgMaxDepth = maxDepth
+          , cfgMaxTime = timeLimit
+          }
+        evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
+
+    createDirectoryIfMissing True evalOutputDir
+    putStrLn $ "Prover config: maxDepth=" ++ show maxDepth ++ ", maxTime=" ++ show timeLimit
+    putStrLn $ "Running " ++ show (length testCases) ++ " test cases..."
+    putStrLn ""
+
+    evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
+      putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
+      result <- try $ evaluateOneProblem proverConfig neuralWaniFunc evalOutputDir idx problem
+      case result of
+        Right (Just r) -> do
+          putStrLn $ "Normal: " ++ TL.unpack (formatTimeNominal (pseNormalTime r)) ++
+                     " (" ++ (if pseNormalSuccess r then "OK" else "FAIL") ++ ")" ++
+                     ", Neural: " ++ TL.unpack (formatTimeNominal (pseNeuralTime r)) ++
+                     " (" ++ (if pseNeuralSuccess r then "OK" else "FAIL") ++ ")"
+          return $ Just r
+        Right Nothing -> do
+          putStrLn "SKIP (no inference query)"
+          return Nothing
+        Left (e :: SomeException) -> do
+          putStrLn $ "ERROR: " ++ show e
+          return Nothing
+
+    let successfulResults = catMaybes evalResults
+
+    -- サマリーを表示
+    printEvalSummary successfulResults
+
+    -- レポートをファイルに保存
+    saveProofSearchReport evalOutputDir proverConfig successfulResults
+
+    -- TeXレポートを出力（evaluate/Main.hs を参考に構成）
+    let sessionId = "D" ++ show (cfgMaxDepth proverConfig) ++ "T" ++ show (cfgMaxTime proverConfig) ++ "_" ++ timeString
+    writeTexReportJSeM evalOutputDir proverConfig sessionId successfulResults
   
   putStrLn ""
   putStrLn "=== Done ==="
