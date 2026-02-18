@@ -1,0 +1,31 @@
+(PiI) type |- λ.λ.(π1(0),((1 π1(0)) π2(0))):(Π (Π entity)(Π (f 0))(g 1))(Π (Σ entity)(f 0))(Σ entity)(g 0)
+  (SigmaI) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- (π1(0),((1 π1(0)) π2(0))):(Σ entity)(g 0)
+    (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- π1(0):entity
+      (SigmaE) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- π1(0):entity
+        (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- 0:(Σ entity)(f 0)
+    (PiE) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- ((1 π1(0)) π2(0)):(g π1(0))
+      (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- 1:(Π entity)(Π (f 0))(g 1)
+      (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- π1(0):entity
+        (SigmaE) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- π1(0):entity
+          (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- 0:(Σ entity)(f 0)
+      (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- π2(0):(f π1(0))
+        (SigmaE) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- π2(0):(f π1(0))
+          (Var) type, (Π entity)(Π (f 0))(g 1), (Σ entity)(f 0) |- 0:(Σ entity)(f 0)
+  (PiF) type |- (Π entity)(Π (f 0))(g 1):type
+    (Var) type |- entity:type
+      (Con) type |- entity:type
+    (PiE) type, entity |- (f 0):type
+      (Con) type, entity |- f:(Π entity)type
+      (Var) type, entity |- 0:entity
+        (Var) type, entity |- 0:entity
+    (PiE) type, entity, (f 0) |- (g 1):type
+      (Con) type, entity, (f 0) |- g:(Π entity)type
+      (Var) type, entity, (f 0) |- 1:entity
+        (Var) type, entity, (f 0) |- 1:entity
+  (SigmaF) type, (Π entity)(Π (f 0))(g 1) |- (Σ entity)(f 0):type
+    (PiE) type, (Π entity)(Π (f 0))(g 1), entity |- (f 0):type
+      (Con) type, (Π entity)(Π (f 0))(g 1), entity |- f:(Π entity)type
+      (Var) type, (Π entity)(Π (f 0))(g 1), entity |- 0:entity
+        (Var) type, (Π entity)(Π (f 0))(g 1), entity |- 0:entity
+    (Var) type, (Π entity)(Π (f 0))(g 1) |- entity:type
+      (Con) type, (Π entity)(Π (f 0))(g 1) |- entity:type

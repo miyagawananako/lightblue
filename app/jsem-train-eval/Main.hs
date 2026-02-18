@@ -431,6 +431,7 @@ buildNeuralWani device model wordMap biDirectional delimiterToken =
       Nothing -> availableRuleLabels
 
 -- | 単一のJSeM問題に対して証明探索を実行し、時間を計測する
+-- 実行順序を交互にすることで、ウォームアップ効果やキャッシュの影響を公平にする
 evaluateOneProblem :: ProverConfig 
                    -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])  -- ^ NeuralWani関数
                    -> FilePath                                        -- ^ 出力ベースディレクトリ
@@ -457,15 +458,24 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir idx problem =
                 QT.neuralWani = Just neuralWaniFunc
                 }
       
-      -- Normal Proverで証明探索
-      performMajorGC
-      (normalTrees, normalTime) <- runProveWithTree normalSetting query
+      -- 実行順序を交互にする（偶数番目と奇数番目で入れ替え）
+      -- これにより、ウォームアップやキャッシュの影響を両者で均等にする
+      -- 注: runProveWithTree内で計測直前にGCが実行されるため、ここでは不要
+      (normalTrees, normalTime, neuralTrees, neuralTime) <- 
+        if even idx
+        then do
+          -- 偶数: Normal → Neural
+          (nTrees, nTime) <- runProveWithTree normalSetting query
+          (nnTrees, nnTime) <- runProveWithTree neuralSetting query
+          return (nTrees, nTime, nnTrees, nnTime)
+        else do
+          -- 奇数: Neural → Normal
+          (nnTrees, nnTime) <- runProveWithTree neuralSetting query
+          (nTrees, nTime) <- runProveWithTree normalSetting query
+          return (nTrees, nTime, nnTrees, nnTime)
+      
       let normalSuccess = not (null normalTrees)
-
-      -- NeuralWani Proverで証明探索
-      performMajorGC
-      (neuralTrees, neuralTime) <- runProveWithTree neuralSetting query
-      let neuralSuccess = not (null neuralTrees)
+          neuralSuccess = not (null neuralTrees)
 
       -- 出力用ベース名の作成（インデックス + JSeM ID をサニタイズ）
       let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem))
@@ -936,8 +946,8 @@ main = do
   putStrLn ""
   putStrLn "=== Phase 5: Proof Search Speed Evaluation ==="
 
-  -- 保存したモデルをロードしてNeuralWani関数を構築
-  putStrLn "Loading saved model for NeuralWani..."
+  -- モデルを一度ロード（各ループでNeuralWani関数は再構築）
+  putStrLn "Loading saved model..."
   emptyModel <- sample hyperParams
   loadedModel <- loadParams emptyModel modelFileName
   frequentWordsEither <- decode <$> B.readFile frequentWordsFileName
@@ -945,7 +955,6 @@ main = do
     Left err -> error $ "Failed to decode frequentWords: " ++ show err
     Right ws -> return ws
   let loadedWordMap = buildWordMap loadedFrequentWords
-      neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional delimiterToken
   putStrLn "Model loaded successfully."
 
   -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
@@ -960,6 +969,10 @@ main = do
   forM_ timeLimits $ \timeLimit -> do
     putStrLn ""
     putStrLn $ "--- Time limit: " ++ show timeLimit ++ " ms ---"
+    
+    -- 各時間制限ごとに新しいNeuralWani関数を構築（キャッシュをリセット）
+    putStrLn "Building fresh NeuralWani function (with empty cache)..."
+    let neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional delimiterToken
 
     let proverConfig = ProverConfig
           { cfgMaxDepth = maxDepth
