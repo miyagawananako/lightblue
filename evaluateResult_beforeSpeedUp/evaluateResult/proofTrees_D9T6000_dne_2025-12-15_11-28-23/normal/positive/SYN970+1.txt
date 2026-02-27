@@ -1,0 +1,28 @@
+(PiI) type |- λ.λ.(1,(0,λ.λ.(3 2))):(Π entity)(Π entity)(Σ entity)(Σ entity)(Π (Π (p 1))(r 1))(Π (p 4))(r 4)
+  (SigmaI) type, entity, entity |- (1,(0,λ.λ.(1 0))):(Σ entity)(Σ entity)(Π (Π (p 1))(r 1))(Π (p 4))(r 4)
+    (Var) type, entity, entity |- 1:entity
+      (Var) type, entity, entity |- 1:entity
+    (Var) type, entity, entity |- 0:entity
+      (Var) type, entity, entity |- 0:entity
+    (PiI) type, entity, entity |- λ.λ.(1 0):(Π (Π (p 1))(r 1))(Π (p 2))(r 2)
+      (PiE) type, entity, entity, (Π (p 1))(r 1), (p 2) |- (1 0):(r 2)
+        (Var) type, entity, entity, (Π (p 1))(r 1), (p 2) |- 1:(Π (p 3))(r 3)
+        (Var) type, entity, entity, (Π (p 1))(r 1), (p 2) |- 0:(p 3)
+          (Var) type, entity, entity, (Π (p 1))(r 1), (p 2) |- 0:(p 3)
+      (PiF) type, entity, entity |- (Π (p 1))(r 1):type
+        (PiE) type, entity, entity |- (p 1):type
+          (Con) type, entity, entity |- p:(Π entity)type
+          (Var) type, entity, entity |- 1:entity
+            (Var) type, entity, entity |- 1:entity
+        (PiE) type, entity, entity, (p 1) |- (r 1):type
+          (Con) type, entity, entity, (p 1) |- r:(Π entity)type
+          (Var) type, entity, entity, (p 1) |- 1:entity
+            (Var) type, entity, entity, (p 1) |- 1:entity
+      (PiE) type, entity, entity, (Π (p 1))(r 1) |- (p 2):type
+        (Con) type, entity, entity, (Π (p 1))(r 1) |- p:(Π entity)type
+        (Var) type, entity, entity, (Π (p 1))(r 1) |- 2:entity
+          (Var) type, entity, entity, (Π (p 1))(r 1) |- 2:entity
+  (Var) type |- entity:type
+    (Con) type |- entity:type
+  (Var) type, entity |- entity:type
+    (Con) type, entity |- entity:type

@@ -1,0 +1,73 @@
+(PiI) type |- λ.λ.λ.λ.(2,(1,(((π1(π2(π2(π2(0)))) 2) π1(π2(0))),(((π2(π2(π2(π2(0)))) 2) 1) π1(π2(π2(0))))))):(Π entity)(Π entity)(Π entity)(Π (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1))(Σ entity)(Σ entity)(Σ (p 1))((q 2) 1)
+  (SigmaI) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- (2,(1,(((π1(π2(π2(π2(0)))) 2) π1(π2(0))),(((π2(π2(π2(π2(0)))) 2) 1) π1(π2(π2(0))))))):(Σ entity)(Σ entity)(Σ (p 1))((q 2) 1)
+    (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 2:entity
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 2:entity
+    (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 1:entity
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 1:entity
+    (PiE) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- ((π1(π2(π2(π2(0)))) 2) π1(π2(0))):(p 2)
+      (SigmaE) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- π1(π2(π2(π2(0)))):(Π entity)(Π (s 0))(p 1)
+        (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 0:(Σ (s 3))(Σ (s 3))(Σ ((r 4) 3))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1)
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 2:entity
+        (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 2:entity
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- π1(π2(0)):(s 2)
+        (SigmaE) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- π1(π2(0)):(s 2)
+          (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 0:(Σ (s 3))(Σ (s 3))(Σ ((r 4) 3))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1)
+    (PiE) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- (((π2(π2(π2(π2(0)))) 2) 1) π1(π2(π2(0)))):((q 2) 1)
+      (SigmaE) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- π2(π2(π2(π2(0)))):(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1)
+        (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 0:(Σ (s 3))(Σ (s 3))(Σ ((r 4) 3))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1)
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 2:entity
+        (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 2:entity
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 1:entity
+        (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 1:entity
+      (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- π1(π2(π2(0))):((r 2) 1)
+        (SigmaE) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- π1(π2(π2(0))):((r 2) 1)
+          (Var) type, entity, entity, entity, (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1) |- 0:(Σ (s 3))(Σ (s 3))(Σ ((r 4) 3))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1)
+  (Var) type |- entity:type
+    (Con) type |- entity:type
+  (Var) type, entity |- entity:type
+    (Con) type, entity |- entity:type
+  (Var) type, entity, entity |- entity:type
+    (Con) type, entity, entity |- entity:type
+  (SigmaF) type, entity, entity, entity |- (Σ (s 2))(Σ (s 2))(Σ ((r 3) 2))(Σ (Π entity)(Π (s 0))(p 1))(Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1):type
+    (PiF) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1) |- (Π entity)(Π entity)(Π ((r 1) 0))((q 2) 1):type
+      (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1) |- entity:type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1) |- entity:type
+      (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity |- entity:type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity |- entity:type
+      (PiE) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity |- ((r 1) 0):type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity |- r:(Π entity)(Π entity)type
+        (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity |- 1:entity
+          (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity |- 1:entity
+        (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity |- 0:entity
+          (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity |- 0:entity
+      (PiE) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity, ((r 1) 0) |- ((q 2) 1):type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity, ((r 1) 0) |- q:(Π entity)(Π entity)type
+        (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity, ((r 1) 0) |- 2:entity
+          (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity, ((r 1) 0) |- 2:entity
+        (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity, ((r 1) 0) |- 1:entity
+          (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), (Π entity)(Π (s 0))(p 1), entity, entity, ((r 1) 0) |- 1:entity
+    (PiE) type, entity, entity, entity |- (s 2):type
+      (Con) type, entity, entity, entity |- s:(Π entity)type
+      (Var) type, entity, entity, entity |- 2:entity
+        (Var) type, entity, entity, entity |- 2:entity
+    (PiE) type, entity, entity, entity, (s 2) |- (s 2):type
+      (Con) type, entity, entity, entity, (s 2) |- s:(Π entity)type
+      (Var) type, entity, entity, entity, (s 2) |- 2:entity
+        (Var) type, entity, entity, entity, (s 2) |- 2:entity
+    (PiE) type, entity, entity, entity, (s 2), (s 2) |- ((r 3) 2):type
+      (Con) type, entity, entity, entity, (s 2), (s 2) |- r:(Π entity)(Π entity)type
+      (Var) type, entity, entity, entity, (s 2), (s 2) |- 3:entity
+        (Var) type, entity, entity, entity, (s 2), (s 2) |- 3:entity
+      (Var) type, entity, entity, entity, (s 2), (s 2) |- 2:entity
+        (Var) type, entity, entity, entity, (s 2), (s 2) |- 2:entity
+    (PiF) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2) |- (Π entity)(Π (s 0))(p 1):type
+      (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2) |- entity:type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2) |- entity:type
+      (PiE) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity |- (s 0):type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity |- s:(Π entity)type
+        (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity |- 0:entity
+          (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity |- 0:entity
+      (PiE) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity, (s 0) |- (p 1):type
+        (Con) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity, (s 0) |- p:(Π entity)type
+        (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity, (s 0) |- 1:entity
+          (Var) type, entity, entity, entity, (s 2), (s 2), ((r 3) 2), entity, (s 0) |- 1:entity

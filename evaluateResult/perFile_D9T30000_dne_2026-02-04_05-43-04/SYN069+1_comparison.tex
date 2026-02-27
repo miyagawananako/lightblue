@@ -1,0 +1,56 @@
+% Auto-generated comparison report for: SYN069+1
+% Session: D9T30000_dne_2026-02-04_05-43-04
+
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\geometry{margin=2cm}
+
+\definecolor{matchcolor}{RGB}{200,255,200}
+\definecolor{mismatchcolor}{RGB}{255,200,200}
+\definecolor{fastercolor}{RGB}{200,200,255}
+
+\title{Wani vs NeuralWani Comparison Report}
+\author{File: SYN/SYN069+1.p}
+\date{Session: \texttt{D9T30000\_dne\_2026-02-04\_05-43-04}}
+
+\begin{document}
+\maketitle
+
+\section{Configuration}
+\begin{itemize}
+\item maxDepth: 9
+\item maxTime: 30000 ms
+\item logicSystem: \textbf{dne}
+\end{itemize}
+
+\section{Comparison Results}
+
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{Wani (Normal)} & \textbf{NeuralWani} \\
+\midrule
+Result & YES & YES \\
+Time & 39.267s & 44.281s \\
+Match Expected & \cellcolor{matchcolor}$\checkmark$ & \cellcolor{matchcolor}$\checkmark$ \\
+\bottomrule
+\end{tabular}
+
+\section{Summary}
+
+\begin{itemize}
+\item Expected Result: YES
+\item Speedup (Normal / Neural): 0.89x
+\item Wani (Normal) is \textbf{faster}
+\end{itemize}
+
+\section{Proof Tree Locations}
+\begin{itemize}
+\item Wani (Normal): \texttt{evaluateResult/proofTrees\_D9T30000\_dne\_2026-02-04\_05-43-04/normal/}
+\item NeuralWani: \texttt{evaluateResult/proofTrees\_D9T30000\_dne\_2026-02-04\_05-43-04/neural/}
+\end{itemize}
+
+\end{document}
