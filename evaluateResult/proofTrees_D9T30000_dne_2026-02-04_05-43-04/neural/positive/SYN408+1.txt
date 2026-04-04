@@ -1,0 +1,35 @@
+(PiI) type |- λ.λ.λ.( dne  λ.(3 (2,1))):(Π ¬(Σ entity)(f 0))(Π entity)(Π (f 0))(g 1)
+  (DNE) type, ¬(Σ entity)(f 0), entity, (f 0) |- ( dne  λ.(3 (2,1))):(g 1)
+    (PiE) type, ¬(Σ entity)(f 0), entity, (f 0) |- (g 1):type
+      (Con) type, ¬(Σ entity)(f 0), entity, (f 0) |- g:(Π entity)type
+      (Var) type, ¬(Σ entity)(f 0), entity, (f 0) |- 1:entity
+        (Var) type, ¬(Σ entity)(f 0), entity, (f 0) |- 1:entity
+    (PiI) type, ¬(Σ entity)(f 0), entity, (f 0) |- λ.(3 (2,1)):¬¬(g 1)
+      (PiE) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- (3 (2,1)):⊥
+        (Var) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- 3:¬(Σ entity)(f 0)
+        (SigmaI) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- (2,1):(Σ entity)(f 0)
+          (Var) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- 2:entity
+            (Var) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- 2:entity
+          (Var) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- 1:(f 2)
+            (Var) type, ¬(Σ entity)(f 0), entity, (f 0), ¬(g 1) |- 1:(f 2)
+      (PiF) type, ¬(Σ entity)(f 0), entity, (f 0) |- ¬(g 1):type
+        (PiE) type, ¬(Σ entity)(f 0), entity, (f 0) |- (g 1):type
+          (Con) type, ¬(Σ entity)(f 0), entity, (f 0) |- g:(Π entity)type
+          (Var) type, ¬(Σ entity)(f 0), entity, (f 0) |- 1:entity
+            (Var) type, ¬(Σ entity)(f 0), entity, (f 0) |- 1:entity
+        (BotF) type, ¬(Σ entity)(f 0), entity, (f 0), (g 1) |- ⊥:type
+  (PiF) type |- ¬(Σ entity)(f 0):type
+    (SigmaF) type |- (Σ entity)(f 0):type
+      (PiE) type, entity |- (f 0):type
+        (Con) type, entity |- f:(Π entity)type
+        (Var) type, entity |- 0:entity
+          (Var) type, entity |- 0:entity
+      (Var) type |- entity:type
+        (Con) type |- entity:type
+    (BotF) type, (Σ entity)(f 0) |- ⊥:type
+  (Var) type, ¬(Σ entity)(f 0) |- entity:type
+    (Con) type, ¬(Σ entity)(f 0) |- entity:type
+  (PiE) type, ¬(Σ entity)(f 0), entity |- (f 0):type
+    (Con) type, ¬(Σ entity)(f 0), entity |- f:(Π entity)type
+    (Var) type, ¬(Σ entity)(f 0), entity |- 0:entity
+      (Var) type, ¬(Σ entity)(f 0), entity |- 0:entity

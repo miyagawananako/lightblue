@@ -1,0 +1,4 @@
+(PiI) type |- λ.0:¬⊥
+  (Var) type, ⊥ |- 0:⊥
+    (Var) type, ⊥ |- 0:⊥
+  (BotF) type |- ⊥:type

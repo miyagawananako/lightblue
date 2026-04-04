@@ -1,0 +1,77 @@
+(SigmaI) type |- (λ.λ.(π2(0) ( dne  λ.(2 (2 ( dne  π1(1)))))),λ.λ.( dne  λ.(2 (λ.(3 2),2)))):(Σ (Π (Π p)q)¬(Σ ¬¬p)¬q)(Π ¬(Σ ¬¬p)¬q)(Π p)q
+  (PiI) type |- λ.λ.(π2(0) ( dne  λ.(2 (2 ( dne  π1(1)))))):(Π (Π p)q)¬(Σ ¬¬p)¬q
+    (PiE) type, (Π p)q, (Σ ¬¬p)¬q |- (π2(0) ( dne  λ.(0 (2 ( dne  π1(1)))))):⊥
+      (SigmaE) type, (Π p)q, (Σ ¬¬p)¬q |- π2(0):¬q
+        (Var) type, (Π p)q, (Σ ¬¬p)¬q |- 0:(Σ ¬¬p)¬q
+      (DNE) type, (Π p)q, (Σ ¬¬p)¬q |- ( dne  λ.(0 (2 ( dne  π1(1))))):q
+        (Var) type, (Π p)q, (Σ ¬¬p)¬q |- q:type
+          (Con) type, (Π p)q, (Σ ¬¬p)¬q |- q:type
+        (PiI) type, (Π p)q, (Σ ¬¬p)¬q |- λ.(0 (2 ( dne  π1(1)))):¬¬q
+          (PiE) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- (0 (2 ( dne  π1(1)))):⊥
+            (Var) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- 0:¬q
+            (PiE) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- (2 ( dne  π1(1))):q
+              (Var) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- 2:(Π p)q
+              (DNE) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- ( dne  π1(1)):p
+                (Var) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- p:type
+                  (Con) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- p:type
+                (Var) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- π1(1):¬¬p
+                  (SigmaE) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- π1(1):¬¬p
+                    (Var) type, (Π p)q, (Σ ¬¬p)¬q, ¬q |- 1:(Σ ¬¬p)¬q
+          (PiF) type, (Π p)q, (Σ ¬¬p)¬q |- ¬q:type
+            (Var) type, (Π p)q, (Σ ¬¬p)¬q |- q:type
+              (Con) type, (Π p)q, (Σ ¬¬p)¬q |- q:type
+            (BotF) type, (Π p)q, (Σ ¬¬p)¬q, q |- ⊥:type
+    (PiF) type |- (Π p)q:type
+      (Var) type |- p:type
+        (Con) type |- p:type
+      (Var) type, p |- q:type
+        (Con) type, p |- q:type
+    (SigmaF) type, (Π p)q |- (Σ ¬¬p)¬q:type
+      (PiF) type, (Π p)q, ¬¬p |- ¬q:type
+        (Var) type, (Π p)q, ¬¬p |- q:type
+          (Con) type, (Π p)q, ¬¬p |- q:type
+        (BotF) type, (Π p)q, ¬¬p, q |- ⊥:type
+      (PiF) type, (Π p)q |- ¬¬p:type
+        (PiF) type, (Π p)q |- ¬p:type
+          (Var) type, (Π p)q |- p:type
+            (Con) type, (Π p)q |- p:type
+          (BotF) type, (Π p)q, p |- ⊥:type
+        (BotF) type, (Π p)q, ¬p |- ⊥:type
+  (PiI) type |- λ.λ.( dne  λ.(2 (λ.(3 2),2))):(Π ¬(Σ ¬¬p)¬q)(Π p)q
+    (DNE) type, ¬(Σ ¬¬p)¬q, p |- ( dne  λ.(2 (λ.(1 2),0))):q
+      (Var) type, ¬(Σ ¬¬p)¬q, p |- q:type
+        (Con) type, ¬(Σ ¬¬p)¬q, p |- q:type
+      (PiI) type, ¬(Σ ¬¬p)¬q, p |- λ.(2 (λ.(1 2),0)):¬¬q
+        (PiE) type, ¬(Σ ¬¬p)¬q, p, ¬q |- (2 (λ.(0 2),0)):⊥
+          (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q |- 2:¬(Σ ¬¬p)¬q
+          (SigmaI) type, ¬(Σ ¬¬p)¬q, p, ¬q |- (λ.(0 2),0):(Σ ¬¬p)¬q
+            (PiI) type, ¬(Σ ¬¬p)¬q, p, ¬q |- λ.(0 2):¬¬p
+              (PiE) type, ¬(Σ ¬¬p)¬q, p, ¬q, ¬p |- (0 2):⊥
+                (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q, ¬p |- 0:¬p
+                (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q, ¬p |- 2:p
+                  (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q, ¬p |- 2:p
+              (PiF) type, ¬(Σ ¬¬p)¬q, p, ¬q |- ¬p:type
+                (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q |- p:type
+                  (Con) type, ¬(Σ ¬¬p)¬q, p, ¬q |- p:type
+                (BotF) type, ¬(Σ ¬¬p)¬q, p, ¬q, p |- ⊥:type
+            (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q |- 0:¬q
+              (Var) type, ¬(Σ ¬¬p)¬q, p, ¬q |- 0:¬q
+        (PiF) type, ¬(Σ ¬¬p)¬q, p |- ¬q:type
+          (Var) type, ¬(Σ ¬¬p)¬q, p |- q:type
+            (Con) type, ¬(Σ ¬¬p)¬q, p |- q:type
+          (BotF) type, ¬(Σ ¬¬p)¬q, p, q |- ⊥:type
+    (PiF) type |- ¬(Σ ¬¬p)¬q:type
+      (SigmaF) type |- (Σ ¬¬p)¬q:type
+        (PiF) type, ¬¬p |- ¬q:type
+          (Var) type, ¬¬p |- q:type
+            (Con) type, ¬¬p |- q:type
+          (BotF) type, ¬¬p, q |- ⊥:type
+        (PiF) type |- ¬¬p:type
+          (PiF) type |- ¬p:type
+            (Var) type |- p:type
+              (Con) type |- p:type
+            (BotF) type, p |- ⊥:type
+          (BotF) type, ¬p |- ⊥:type
+      (BotF) type, (Σ ¬¬p)¬q |- ⊥:type
+    (Var) type, ¬(Σ ¬¬p)¬q |- p:type
+      (Con) type, ¬(Σ ¬¬p)¬q |- p:type
