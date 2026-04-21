@@ -86,7 +86,8 @@ prove' QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) =  -- LiftT 
         WB.oracle = oracle,
         WB.oracleThreshold=0.5,
         WB.enableEq = True,
-        WB.enableConcurrent = True
+        WB.enableConcurrent = True,
+        WB.getPrioritizedRules = neuralWani
         };
       ioResult = hojo ctx ((A.aEntityName,DdB.Type):sig) typ setting (M.maybe Nothing (\t -> M.Just $ toEnum (t * (10^9))) maxTime)
   in ListT.lift ioResult >>= \result ->

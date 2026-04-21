@@ -30,6 +30,8 @@ import Interface.Tree
 import qualified DTS.DTTdeBruijn as DTTdB
 import qualified DTS.UDTTdeBruijn as UDTTdB
 import DTS.GeneralTypeQuery (GeneralTypeQuery(..))
+import {-# SOURCE #-} qualified DTS.Prover.Wani.WaniBase as WB
+import {-# SOURCE #-} qualified DTS.Prover.Wani.BackwardRules as BR
 
 -- BOTF?
 data DTTrule = Var | Con | TypeF | Conv | WK | PiF | PiI | PiE | DNE | EFQ | SigmaF | SigmaI | SigmaE | DisjF | DisjI | DisjE | BotF | TopF | TopI | EnumF | EnumI | EnumE | IqF | IqI | IqE | NatF | NatI | NatE deriving (Eq, Show, Read, G.Generic, Store, Enum, Bounded, Ord)
@@ -89,11 +91,11 @@ data ProofSearchSetting = ProofSearchSetting {
   , reportMaxTime :: Bool  -- Default = False
   , reportMaxDepth :: Bool -- Defailt = False
   , oracle :: Maybe (DTTdB.ConName -> DTTdB.ConName -> Float) -- Default = Nothing
-  -- , neuralWani :: Maybe ()
+  , neuralWani :: Maybe (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel]) -- Default = Nothing
   } -- deriving (Eq, Show)
 
 defaultProofSearchSetting :: ProofSearchSetting
-defaultProofSearchSetting = ProofSearchSetting Nothing Nothing (Just Intuitionistic) (-1) True False False Nothing
+defaultProofSearchSetting = ProofSearchSetting Nothing Nothing (Just Intuitionistic) (-1) True False False Nothing Nothing
 
 type Prover = DTTdB.ProofSearchQuery -> ListT IO DTTProofDiagram
 
