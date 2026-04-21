@@ -35,6 +35,7 @@ import Data.Store (Store, encode, decode)
 import qualified GHC.Generics as G
 import Data.Ord (Down(..))
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Data.List as List
 import qualified Data.List.Split as List
 import System.Environment (getArgs)
@@ -408,9 +409,9 @@ writeProofTrees baseDir baseName trees = do
         writeProofTreeHTML htmlPath tree
 
 -- | NeuralWaniを構築する関数（学習済みモデルから）
-buildNeuralWani :: Device -> Params -> WordMap -> Bool -> DelimiterToken 
+buildNeuralWani :: Device -> Params -> WordMap -> Bool -> Maybe Int -> DelimiterToken 
                 -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
-buildNeuralWani device model wordMap biDirectional delimiterToken = 
+buildNeuralWani device model wordMap biDirectional topK delimiterToken = 
   let cacheRef = unsafePerformIO $ newIORef (Map.empty :: Map.Map DdB.Judgment [BR.RuleLabel])
   in \goal availableRuleLabels ->
     let maybeJudgment = WB.goal2NeuralWaniJudgement goal
@@ -422,7 +423,7 @@ buildNeuralWani device model wordMap biDirectional delimiterToken =
                 Just cachedResult -> 
                   return cachedResult
                 Nothing -> do
-                  let result = predictRule device model judgment biDirectional wordMap delimiterToken
+                  let result = predictRule device model judgment biDirectional topK wordMap delimiterToken
                   modifyIORef' cacheRef (Map.insert judgment result)
                   return result
             
@@ -746,8 +747,8 @@ main = do
   args <- getArgs
   
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold]
-  let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold) = case args of
+  -- Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
+  let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold, topK) = case args of
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
           ( a0                    -- JSeMProblemDataファイルパス
           , read a1 :: Bool       -- 双方向LSTM
@@ -760,6 +761,7 @@ main = do
           , read a8 :: Int        -- エポック数
           , read a9 :: Int        -- maxDepth
           , Nothing               -- threshold (optional)
+          , Nothing               -- topK (optional)
           )
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] ->
           ( a0                    -- JSeMProblemDataファイルパス
@@ -773,12 +775,27 @@ main = do
           , read a8 :: Int        -- エポック数
           , read a9 :: Int        -- maxDepth
           , Just (read a10 :: Int) -- threshold (optional)
+          , Nothing               -- topK (optional)
+          )
+        [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] ->
+          ( a0                    -- JSeMProblemDataファイルパス
+          , read a1 :: Bool       -- 双方向LSTM
+          , read a2 :: Int        -- 埋め込み次元
+          , read a3 :: Int        -- 隠れ層サイズ
+          , read a4 :: Int        -- LSTM層数
+          , read a5 :: Bool       -- バイアス
+          , read a6 :: Float      -- 学習率
+          , read a7 :: Int        -- バッチサイズ
+          , read a8 :: Int        -- エポック数
+          , read a9 :: Int        -- maxDepth
+          , Just (read a10 :: Int) -- threshold (optional)
+          , Just (read a11 :: Int) -- topK (optional)
           )
         _ -> error $ unlines
-          [ "Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold]"
+          [ "Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
           , ""
           , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9"
-          , "Example (with threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000"
+          , "Example (with topK and threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000 5"
           , ""
           , "Arguments:"
           , "  jsemDataPath  : String - Path to JSeMProblemData binary file (created by collectTypeCheckTrees-exe)"
@@ -792,6 +809,7 @@ main = do
           , "  epochs        : Int    - Number of epochs"
           , "  maxDepth      : Int    - Max proof search depth"
           , "  threshold     : Int    - Optional cap per label for training (omit for no cap)"
+          , "  topK          : Int    - Number of top rules to consider"
           ]
   
   putStrLn "=== JSeM Train & Evaluate ==="
@@ -812,6 +830,8 @@ main = do
   allProblems <- loadJSeMProblemsFromFile jsemDataPath
   
   putStrLn $ "Loaded " ++ show (length allProblems) ++ " JSeM problems"
+  let loadedJSeMCount = Set.size $ Set.fromList $ map jspJsemId allProblems
+  putStrLn $ "Loaded JSeM count (unique ID): " ++ show loadedJSeMCount
 
   -- 推論問題を持つ問題のみ抽出
   let problemsWithQuery = filter (not . null . jspInferenceQuery) allProblems
@@ -827,18 +847,18 @@ main = do
       isIncludeF = False
       isOnlyBackwardRules = True
   
-  -- JSeM問題単位で分割（評価用）
-  (trainAndValidProblems, testProblems) <- splitJSeMProblems problemsWithQuery
-  putStrLn $ "Train+Valid problems: " ++ show (length trainAndValidProblems)
-  putStrLn $ "Test problems: " ++ show (length testProblems)
+  -- JSeM問題単位で分割（分類モデル学習元 / 証明探索評価用）
+  (modelSourceProblems, proofSearchTestProblems) <- splitJSeMProblems problemsWithQuery
+  putStrLn $ "Model-source problems (for classification train/valid/test): " ++ show (length modelSourceProblems)
+  putStrLn $ "Proof-search test problems (for NeuralWani eval): " ++ show (length proofSearchTestProblems)
 
-  let trainAndValidJudgmentRules = concatMap jspJudgmentRules trainAndValidProblems
-  putStrLn $ "Train+Valid judgment-rule pairs: " ++ show (length trainAndValidJudgmentRules)
+  let modelSourceJudgmentRules = concatMap jspJudgmentRules modelSourceProblems
+  putStrLn $ "Model-source judgment-rule pairs: " ++ show (length modelSourceJudgmentRules)
 
   -- フィルタリング（train+validのみ使用）
   let backwardDataset = if isOnlyBackwardRules
-                then filter (\(_, rule) -> elem rule backwardRules) trainAndValidJudgmentRules
-                else trainAndValidJudgmentRules
+        then filter (\(_, rule) -> elem rule backwardRules) modelSourceJudgmentRules
+        else modelSourceJudgmentRules
       filteredDataset = if isIncludeF
                 then backwardDataset
                 else filter (\(_, rule) -> rule `notElem` formationRules) backwardDataset
@@ -913,7 +933,11 @@ main = do
       folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++ 
                    "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++ 
                    "_h" ++ show hiddenSize ++ "_layer" ++ show numOfLayers
-      newFolderPath = "jsemResults" </> folderName </> timeString
+      baseFolderPath = "jsemResults" </> folderName </> timeString
+      topKDirName = case topK of
+        Nothing -> "topk_nothing"
+        Just k -> "topk_" ++ show k
+      newFolderPath = baseFolderPath </> topKDirName
   
   createDirectoryIfMissing True newFolderPath
   
@@ -959,7 +983,7 @@ main = do
 
   -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
   let maxTestCases = 50  -- 最大テストケース数
-      testCases = take maxTestCases testProblems
+      testCases = take maxTestCases proofSearchTestProblems
       timeLimits = [30000, 60000, 90000]
 
   let testCasesFileName = newFolderPath </> "testCases.bin"
@@ -972,7 +996,7 @@ main = do
     
     -- 各時間制限ごとに新しいNeuralWani関数を構築（キャッシュをリセット）
     putStrLn "Building fresh NeuralWani function (with empty cache)..."
-    let neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional delimiterToken
+    let neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional topK delimiterToken
 
     let proverConfig = ProverConfig
           { cfgMaxDepth = maxDepth
@@ -980,6 +1004,7 @@ main = do
           }
         evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
 
+    createDirectoryIfMissing True newFolderPath
     createDirectoryIfMissing True evalOutputDir
     putStrLn $ "Prover config: maxDepth=" ++ show maxDepth ++ ", maxTime=" ++ show timeLimit
     putStrLn $ "Running " ++ show (length testCases) ++ " test cases..."

@@ -1,0 +1,16 @@
+=== Proof Search Evaluation Report ===
+
+Configuration:
+  maxDepth: 9
+  maxTime: 90000
+
+Results:
+  Total tests: 50
+  Normal Prover success: 5/50
+  NeuralWani Prover success: 5/50
+  Speedup (all avg): 1.01x
+
+Average Time (both succeeded: 5 tests):
+  Normal Prover: 20.798 sec
+  NeuralWani Prover: 20.850 sec
+  Speedup: 1.0x

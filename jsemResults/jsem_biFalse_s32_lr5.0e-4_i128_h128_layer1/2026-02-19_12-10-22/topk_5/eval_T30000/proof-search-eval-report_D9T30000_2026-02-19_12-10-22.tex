@@ -1,0 +1,105 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{amssymb}
+\geometry{margin=1.5cm}
+
+\title{JSeM Proof Search Evaluation Report}
+\author{jsem-train-eval}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Configuration}
+\begin{itemize}
+\item maxDepth: 9
+\item maxTime: 30000 ms
+\item Session ID: \texttt{D9T30000\_2026-02-19\_12-10-22}
+\item Output Directory: \texttt{jsemResults/jsem\_biFalse\_s32\_lr5.0e-4\_i128\_h128\_layer1/2026-02-19\_12-10-22/topk\_5/eval\_T30000}
+\end{itemize}
+
+\section{Summary}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total tests & 50 \\
+Normal success & 8/50 \\
+Neural success & 0/50 \\
+\midrule
+Avg. Normal time (all) & 179.877 sec \\
+Avg. Neural time (all) & 0.183 sec \\
+Speedup (Normal/Neural; all avg) & 983.10x \\
+Avg. Normal time (both ok) & 0.000 sec \\
+Avg. Neural time (both ok) & 0.000 sec \\
+Speedup (Normal/Neural; both ok avg) & N/A \\
+\bottomrule
+\end{tabular}
+
+
+\section{Detailed Results}
+\begin{longtable}{lccccc}
+\toprule
+\textbf{JSeM ID} & \textbf{Normal Time} & \textbf{Normal OK} & \textbf{Neural Time} & \textbf{Neural OK} & \textbf{Speedup} \\
+\midrule
+\endhead
+129 & 210.323s & $\times$ & 0.300s & $\times$ & 701.58x \\
+770 & 138.565s & $\times$ & 0.141s & $\times$ & 982.07x \\
+127 & 152.579s & $\times$ & 0.433s & $\times$ & 352.54x \\
+350 & 177.270s & $\times$ & 0.153s & $\times$ & 1160.92x \\
+115 & 152.694s & $\times$ & 0.111s & $\times$ & 1377.02x \\
+771 & 110.185s & $\times$ & 0.112s & $\times$ & 983.34x \\
+122 & 152.915s & $\times$ & 0.112s & $\times$ & 1369.84x \\
+CA195 & 149.169s & $\times$ & 0.142s & $\times$ & 1051.43x \\
+774 & 103.901s & $\times$ & 0.124s & $\times$ & 835.47x \\
+747 & 127.898s & $\times$ & 0.096s & $\times$ & 1333.69x \\
+218 & 186.572s & $\times$ & 0.255s & $\times$ & 731.63x \\
+46 & 97.377s & $\times$ & 0.082s & $\times$ & 1181.10x \\
+539 & 0.015s & \checkmark & 0.070s & $\times$ & 0.21x \\
+32 & 113.135s & $\times$ & 0.085s & $\times$ & 1328.17x \\
+658 & 1840.596s & $\times$ & 0.280s & $\times$ & 6568.81x \\
+671 & 86.999s & $\times$ & 0.108s & $\times$ & 807.59x \\
+63 & 13.588s & \checkmark & 0.120s & $\times$ & 113.36x \\
+200 & 152.935s & $\times$ & 0.113s & $\times$ & 1350.83x \\
+CA44 & 127.327s & $\times$ & 0.104s & $\times$ & 1226.88x \\
+CA35 & 121.549s & $\times$ & 0.113s & $\times$ & 1079.08x \\
+89 & 151.688s & $\times$ & 0.103s & $\times$ & 1479.02x \\
+NP1 & 0.120s & \checkmark & 0.067s & $\times$ & 1.78x \\
+323 & 153.073s & $\times$ & 0.890s & $\times$ & 171.99x \\
+357 & 153.274s & $\times$ & 0.074s & $\times$ & 2058.07x \\
+CA39 & 130.578s & $\times$ & 0.114s & $\times$ & 1142.46x \\
+314 & 127.884s & $\times$ & 0.109s & $\times$ & 1168.82x \\
+317 & 110.725s & $\times$ & 0.127s & $\times$ & 872.44x \\
+124 & 177.349s & $\times$ & 0.569s & $\times$ & 311.78x \\
+722 & 0.017s & \checkmark & 0.088s & $\times$ & 0.19x \\
+CA212 & 181.236s & $\times$ & 0.173s & $\times$ & 1050.24x \\
+CA62 & 161.252s & $\times$ & 0.153s & $\times$ & 1056.66x \\
+757 & 124.917s & $\times$ & 0.145s & $\times$ & 858.94x \\
+302 & 511.500s & $\times$ & 0.268s & $\times$ & 1908.82x \\
+CA146 & 1164.823s & $\times$ & 0.120s & $\times$ & 9690.29x \\
+217 & 152.367s & $\times$ & 0.641s & $\times$ & 237.83x \\
+CA228 & 154.473s & $\times$ & 0.130s & $\times$ & 1185.59x \\
+NP19 & 154.871s & $\times$ & 0.073s & $\times$ & 2133.59x \\
+783 & 14.302s & $\times$ & 0.112s & $\times$ & 127.89x \\
+656 & 127.156s & $\times$ & 0.134s & $\times$ & 951.28x \\
+NP69 & 181.054s & $\times$ & 0.276s & $\times$ & 656.95x \\
+188 & 0.198s & \checkmark & 0.209s & $\times$ & 0.95x \\
+737 & 133.779s & $\times$ & 0.157s & $\times$ & 849.63x \\
+94 & 140.522s & $\times$ & 0.099s & $\times$ & 1413.94x \\
+251 & 121.461s & $\times$ & 0.178s & $\times$ & 682.16x \\
+726 & 0.043s & \checkmark & 0.106s & $\times$ & 0.41x \\
+42 & 97.459s & $\times$ & 0.006s & $\times$ & 16224.50x \\
+342 & 183.967s & $\times$ & 0.217s & $\times$ & 846.80x \\
+140 & 165.687s & $\times$ & 0.526s & $\times$ & 315.19x \\
+NP3 & 2.439s & \checkmark & 0.170s & $\times$ & 14.36x \\
+704 & 0.019s & \checkmark & 0.061s & $\times$ & 0.31x \\
+\bottomrule
+\end{longtable}
+
+
+\end{document}
