@@ -1,0 +1,27 @@
+(PiI) type |- λ.(0 (λ.1,λ.1)):¬¬(Σ (Π p)p)(Π p)p
+  (PiE) type, ¬(Σ (Π p)p)(Π p)p |- (0 (λ.0,λ.0)):⊥
+    (Var) type, ¬(Σ (Π p)p)(Π p)p |- 0:¬(Σ (Π p)p)(Π p)p
+    (SigmaI) type, ¬(Σ (Π p)p)(Π p)p |- (λ.0,λ.0):(Σ (Π p)p)(Π p)p
+      (PiI) type, ¬(Σ (Π p)p)(Π p)p |- λ.0:(Π p)p
+        (Var) type, ¬(Σ (Π p)p)(Π p)p, p |- 0:p
+          (Var) type, ¬(Σ (Π p)p)(Π p)p, p |- 0:p
+        (Var) type, ¬(Σ (Π p)p)(Π p)p |- p:type
+          (Con) type, ¬(Σ (Π p)p)(Π p)p |- p:type
+      (PiI) type, ¬(Σ (Π p)p)(Π p)p |- λ.0:(Π p)p
+        (Var) type, ¬(Σ (Π p)p)(Π p)p, p |- 0:p
+          (Var) type, ¬(Σ (Π p)p)(Π p)p, p |- 0:p
+        (Var) type, ¬(Σ (Π p)p)(Π p)p |- p:type
+          (Con) type, ¬(Σ (Π p)p)(Π p)p |- p:type
+  (PiF) type |- ¬(Σ (Π p)p)(Π p)p:type
+    (SigmaF) type |- (Σ (Π p)p)(Π p)p:type
+      (PiF) type, (Π p)p |- (Π p)p:type
+        (Var) type, (Π p)p |- p:type
+          (Con) type, (Π p)p |- p:type
+        (Var) type, (Π p)p, p |- p:type
+          (Con) type, (Π p)p, p |- p:type
+      (PiF) type |- (Π p)p:type
+        (Var) type |- p:type
+          (Con) type |- p:type
+        (Var) type, p |- p:type
+          (Con) type, p |- p:type
+    (BotF) type, (Σ (Π p)p)(Π p)p |- ⊥:type

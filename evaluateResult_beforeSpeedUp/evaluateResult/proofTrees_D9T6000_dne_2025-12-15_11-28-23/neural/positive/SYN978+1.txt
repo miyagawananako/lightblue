@@ -1,0 +1,19 @@
+(PiI) type |- λ.(λ.π2(1),λ.π1(1)):(Π (Σ a)b)(Σ (Π a)b)(Π b)a
+  (SigmaI) type, (Σ a)b |- (λ.π2(1),λ.π1(1)):(Σ (Π a)b)(Π b)a
+    (PiI) type, (Σ a)b |- λ.π2(1):(Π a)b
+      (Var) type, (Σ a)b, a |- π2(1):b
+        (SigmaE) type, (Σ a)b, a |- π2(1):b
+          (Var) type, (Σ a)b, a |- 1:(Σ a)b
+      (Var) type, (Σ a)b |- a:type
+        (Con) type, (Σ a)b |- a:type
+    (PiI) type, (Σ a)b |- λ.π1(1):(Π b)a
+      (Var) type, (Σ a)b, b |- π1(1):a
+        (SigmaE) type, (Σ a)b, b |- π1(1):a
+          (Var) type, (Σ a)b, b |- 1:(Σ a)b
+      (Var) type, (Σ a)b |- b:type
+        (Con) type, (Σ a)b |- b:type
+  (SigmaF) type |- (Σ a)b:type
+    (Var) type, a |- b:type
+      (Con) type, a |- b:type
+    (Var) type |- a:type
+      (Con) type |- a:type

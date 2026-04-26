@@ -1,0 +1,175 @@
+(PiI) type |- λ.λ.λ.((((((((eqElim π1(2)) 0) (π1((π2(2) 0)),π2((π2(2) 0)))) 1) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0))) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0)))) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1))) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1)))):(Π (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0))(Π entity)(Π entity)((big_q 0) 1)
+  (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((((((((eqElim π1(2)) 0) (π1((π2(2) 0)),π2((π2(2) 0)))) 1) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0))) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0)))) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1))) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1)))):((big_q 0) 1)
+    (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim π1(2)):(Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)(Π entity)(Π 0=[entity]3)(Π entity)(Π 0=[entity]3)((big_q 3) 1)
+      (SigmaE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- π1(2):(Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0)
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 2:(Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0)
+    (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+    (SigmaI) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (π1((π2(2) 0)),π2((π2(2) 0))):(Σ entity)((big_p 1) 0)
+      (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- π1((π2(2) 0)):entity
+        (SigmaE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- λ.π1((π2(3) 0)):(Π entity)entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 2:(Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0)
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- π2((π2(2) 0)):((big_p 0) π1((π2(2) 0)))
+        (SigmaE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- λ.π2((π2(3) 0)):(Π entity)((big_p 0) π1((π2(3) 0)))
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 2:(Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0)
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+    (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+    (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+    (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (((((((eqElim forwardEqIntro) entity) 0) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0))) 0) (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0))):0=[entity]0
+      (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim forwardEqIntro):(Π type)(Π 0)(Π 1)(Π 0=[2]1)(Π 3)(Π 0=[4]3)3=[5]1
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+        (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0)):0=[entity]0
+        (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim forwardEqIntro):(Π type)(Π 0)(Π 1)(Π 0=[2]1)(Π 3)(Π 0=[4]3)3=[5]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 0):0=[entity]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 0):0=[entity]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+      (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (((((((eqElim forwardEqIntro) entity) 0) 0) ((forwardEqIntro entity) 0)) 0) ((forwardEqIntro entity) 0)):0=[entity]0
+        (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim forwardEqIntro):(Π type)(Π 0)(Π 1)(Π 0=[2]1)(Π 3)(Π 0=[4]3)3=[5]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 0):0=[entity]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 0):0=[entity]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 0:entity
+    (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+    (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (((((((eqElim forwardEqIntro) entity) 1) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1))) 1) (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1))):1=[entity]1
+      (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim forwardEqIntro):(Π type)(Π 0)(Π 1)(Π 0=[2]1)(Π 3)(Π 0=[4]3)3=[5]1
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+        (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+      (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1)):1=[entity]1
+        (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim forwardEqIntro):(Π type)(Π 0)(Π 1)(Π 0=[2]1)(Π 3)(Π 0=[4]3)3=[5]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 1):1=[entity]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 1):1=[entity]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+      (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+      (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (((((((eqElim forwardEqIntro) entity) 1) 1) ((forwardEqIntro entity) 1)) 1) ((forwardEqIntro entity) 1)):1=[entity]1
+        (IqE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- (eqElim forwardEqIntro):(Π type)(Π 0)(Π 1)(Π 0=[2]1)(Π 3)(Π 0=[4]3)3=[5]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 1):1=[entity]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+        (PiE) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- ((forwardEqIntro entity) 1):1=[entity]1
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- forwardEqIntro:(Π type)(Π 0)0=[1]0
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+            (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- entity:type
+          (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+            (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity, entity |- 1:entity
+  (SigmaF) type |- (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0):type
+    (PiF) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0) |- (Π entity)(Σ entity)((big_p 1) 0):type
+      (Var) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0) |- entity:type
+        (Con) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0) |- entity:type
+      (SigmaF) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity |- (Σ entity)((big_p 1) 0):type
+        (PiE) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity, entity |- ((big_p 1) 0):type
+          (Con) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity, entity |- big_p:(Π entity)(Π entity)type
+          (Var) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity, entity |- 1:entity
+            (Var) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity, entity |- 1:entity
+          (Var) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity, entity |- 0:entity
+            (Var) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity, entity |- 0:entity
+        (Var) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity |- entity:type
+          (Con) type, (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0), entity |- entity:type
+    (PiF) type |- (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0):type
+      (Var) type |- entity:type
+        (Con) type |- entity:type
+      (SigmaF) type, entity |- (Σ entity)((big_p 1) 0):type
+        (PiE) type, entity, entity |- ((big_p 1) 0):type
+          (Con) type, entity, entity |- big_p:(Π entity)(Π entity)type
+          (Var) type, entity, entity |- 1:entity
+            (Var) type, entity, entity |- 1:entity
+          (Var) type, entity, entity |- 0:entity
+            (Var) type, entity, entity |- 0:entity
+        (Var) type, entity |- entity:type
+          (Con) type, entity |- entity:type
+      (Var) type, entity, (Σ entity)((big_p 1) 0) |- entity:type
+        (Con) type, entity, (Σ entity)((big_p 1) 0) |- entity:type
+      (PiE) type, entity, (Σ entity)((big_p 1) 0), entity |- ((big_q 2) 0):type
+        (Con) type, entity, (Σ entity)((big_p 1) 0), entity |- big_q:(Π entity)(Π entity)type
+        (Var) type, entity, (Σ entity)((big_p 1) 0), entity |- 2:entity
+          (Var) type, entity, (Σ entity)((big_p 1) 0), entity |- 2:entity
+        (Var) type, entity, (Σ entity)((big_p 1) 0), entity |- 0:entity
+          (Var) type, entity, (Σ entity)((big_p 1) 0), entity |- 0:entity
+  (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0) |- entity:type
+    (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0) |- entity:type
+  (Var) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity |- entity:type
+    (Con) type, (Σ (Π entity)(Π (Σ entity)((big_p 1) 0))(Π entity)((big_q 2) 0))(Π entity)(Σ entity)((big_p 1) 0), entity |- entity:type

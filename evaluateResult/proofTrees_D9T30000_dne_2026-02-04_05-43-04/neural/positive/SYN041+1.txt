@@ -1,0 +1,25 @@
+(PiI) type |- λ.λ.( dne  λ.(2 λ.2)):(Π ¬(Π p)q)(Π q)p
+  (DNE) type, ¬(Π p)q, q |- ( dne  λ.(2 λ.2)):p
+    (Var) type, ¬(Π p)q, q |- p:type
+      (Con) type, ¬(Π p)q, q |- p:type
+    (PiI) type, ¬(Π p)q, q |- λ.(2 λ.2):¬¬p
+      (PiE) type, ¬(Π p)q, q, ¬p |- (2 λ.2):⊥
+        (Var) type, ¬(Π p)q, q, ¬p |- 2:¬(Π p)q
+        (PiI) type, ¬(Π p)q, q, ¬p |- λ.2:(Π p)q
+          (Var) type, ¬(Π p)q, q, ¬p, p |- 2:q
+            (Var) type, ¬(Π p)q, q, ¬p, p |- 2:q
+          (Var) type, ¬(Π p)q, q, ¬p |- p:type
+            (Con) type, ¬(Π p)q, q, ¬p |- p:type
+      (PiF) type, ¬(Π p)q, q |- ¬p:type
+        (Var) type, ¬(Π p)q, q |- p:type
+          (Con) type, ¬(Π p)q, q |- p:type
+        (BotF) type, ¬(Π p)q, q, p |- ⊥:type
+  (PiF) type |- ¬(Π p)q:type
+    (PiF) type |- (Π p)q:type
+      (Var) type |- p:type
+        (Con) type |- p:type
+      (Var) type, p |- q:type
+        (Con) type, p |- q:type
+    (BotF) type, (Π p)q |- ⊥:type
+  (Var) type, ¬(Π p)q |- q:type
+    (Con) type, ¬(Π p)q |- q:type

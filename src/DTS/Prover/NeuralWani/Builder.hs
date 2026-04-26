@@ -78,7 +78,7 @@ neuralWaniBuilder = do
                   return cachedResult
                 Nothing -> do
                   putStrLn "Cache Miss. Predicting..."
-                  let result = F.predictRule device model judgment bi_directional wordMap delimiterToken
+                  let result = F.predictRule device model judgment bi_directional Nothing wordMap delimiterToken
                   putStrLn "Prediction finished. Updating cache..."
                   modifyIORef' cacheRef (Map.insert judgment result)
                   return result
@@ -87,7 +87,7 @@ neuralWaniBuilder = do
         --       case Map.lookup judgment cache of
         --         Just cacheResult -> return cacheResult
         --         Nothing -> do
-        --           let result = F.predictRule device model judgment bi_directional wordMap delimiterToken
+        --           let result = F.predictRule device model judgment bi_directional Nothing wordMap delimiterToken
         --           modifyIORef' cacheRef (Map.insert judgment result)
         --           return result
             filteredRuleLabels = filter (`elem` availableRuleLabels) predictedRuleLabels

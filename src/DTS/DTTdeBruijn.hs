@@ -390,7 +390,7 @@ instance Typeset TypeInferQuery where
 instance MathML TypeInferQuery where
   toMathML = toMathML . embedTypeInferQuery
 
-data ProofSearchQuery = ProofSearchQuery Signature Context Preterm deriving (G.Generic)
+data ProofSearchQuery = ProofSearchQuery Signature Context Preterm deriving (Eq, G.Generic, Store, NFData)
 
 embedProofSearchQuery :: ProofSearchQuery -> GeneralTypeQuery Signature Context Preterm Preterm
 embedProofSearchQuery (ProofSearchQuery sig cxt typ) = GeneralTypeQuery sig cxt Question (Term typ)
@@ -403,7 +403,6 @@ instance Typeset ProofSearchQuery where
   toTeX = toTeX . embedProofSearchQuery
 instance MathML ProofSearchQuery where
   toMathML = toMathML . embedProofSearchQuery
-instance Store ProofSearchQuery
 
 -- | Load a ProofSearchQuery from a binary file
 loadProofSearchQuery :: FilePath -> IO (Either String ProofSearchQuery)

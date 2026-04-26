@@ -1,0 +1,39 @@
+(PiI) type |- λ.(π1(π2(0)),(((π1(0) π1(π2(0))) π1(π2(π2(0)))),π2(π2(π2(0))))):(Π (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1))(Σ entity)(Σ (g 0))(h 1)
+  (SigmaI) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- (π1(π2(0)),(((π1(0) π1(π2(0))) π1(π2(π2(0)))),π2(π2(π2(0))))):(Σ entity)(Σ (g 0))(h 1)
+    (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(π2(0)):entity
+      (SigmaE) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(π2(0)):entity
+        (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- 0:(Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1)
+    (PiE) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- ((π1(0) π1(π2(0))) π1(π2(π2(0)))):(g π1(π2(0)))
+      (SigmaE) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(0):(Π entity)(Π (f 0))(g 1)
+        (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- 0:(Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1)
+      (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(π2(0)):entity
+        (SigmaE) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(π2(0)):entity
+          (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- 0:(Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1)
+      (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(π2(π2(0))):(f π1(π2(0)))
+        (SigmaE) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π1(π2(π2(0))):(f π1(π2(0)))
+          (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- 0:(Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1)
+    (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π2(π2(π2(0))):(h π1(π2(0)))
+      (SigmaE) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- π2(π2(π2(0))):(h π1(π2(0)))
+        (Var) type, (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1) |- 0:(Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1)
+  (SigmaF) type |- (Σ (Π entity)(Π (f 0))(g 1))(Σ entity)(Σ (f 0))(h 1):type
+    (PiE) type, (Π entity)(Π (f 0))(g 1), entity, (f 0) |- (h 1):type
+      (Con) type, (Π entity)(Π (f 0))(g 1), entity, (f 0) |- h:(Π entity)type
+      (Var) type, (Π entity)(Π (f 0))(g 1), entity, (f 0) |- 1:entity
+        (Var) type, (Π entity)(Π (f 0))(g 1), entity, (f 0) |- 1:entity
+    (PiF) type |- (Π entity)(Π (f 0))(g 1):type
+      (Var) type |- entity:type
+        (Con) type |- entity:type
+      (PiE) type, entity |- (f 0):type
+        (Con) type, entity |- f:(Π entity)type
+        (Var) type, entity |- 0:entity
+          (Var) type, entity |- 0:entity
+      (PiE) type, entity, (f 0) |- (g 1):type
+        (Con) type, entity, (f 0) |- g:(Π entity)type
+        (Var) type, entity, (f 0) |- 1:entity
+          (Var) type, entity, (f 0) |- 1:entity
+    (Var) type, (Π entity)(Π (f 0))(g 1) |- entity:type
+      (Con) type, (Π entity)(Π (f 0))(g 1) |- entity:type
+    (PiE) type, (Π entity)(Π (f 0))(g 1), entity |- (f 0):type
+      (Con) type, (Π entity)(Π (f 0))(g 1), entity |- f:(Π entity)type
+      (Var) type, (Π entity)(Π (f 0))(g 1), entity |- 0:entity
+        (Var) type, (Π entity)(Π (f 0))(g 1), entity |- 0:entity

@@ -122,13 +122,14 @@ extractLastOutput tensor bi_directional =
 -- * params - モデルのパラメータ
 -- * judgment - 予測対象のJudgment
 -- * bi_directional - 双方向LSTMを使用するかどうか
+-- * topK - 取得する上位件数（`Nothing` の場合は全件）
 -- * wordMap - 頻出語からトークンへのマッピング（buildWordMapで事前構築）
 -- * delimiterToken - 区切り用トークンの種類（splitJudgmentに必要）
 --
 -- 戻り値：
 -- * 予測された規則のリスト（確率の高い順にソート済み、BR.RuleLabel）
-predictRule :: Device -> Params -> U.Judgment -> Bool -> WordMap -> DelimiterToken -> [BR.RuleLabel]
-predictRule device params judgment bi_directional wordMap delimiterToken =
+predictRule :: Device -> Params -> U.Judgment -> Bool -> Maybe Int -> WordMap -> DelimiterToken -> [BR.RuleLabel]
+predictRule device params judgment bi_directional topK wordMap delimiterToken =
   -- Judgmentをトークン列に変換
   let tokens = splitJudgment judgment wordMap delimiterToken
       -- forward関数を呼び出して予測確率テンソルを取得
@@ -142,7 +143,8 @@ predictRule device params judgment bi_directional wordMap delimiterToken =
       probs = asValue flat :: [Float]
       indexedProbs = zip [0..] probs
       sortedIndexedProbs = List.sortOn (Down . snd) indexedProbs
+      topKIndexedProbs = maybe sortedIndexedProbs (`take` sortedIndexedProbs) topK
       -- インデックスを規則に変換（BR.RuleLabelとして）
-      predictedRules = map (\(idx, _) -> toEnum idx :: BR.RuleLabel) sortedIndexedProbs
+      predictedRules = map (\(idx, _) -> toEnum idx :: BR.RuleLabel) topKIndexedProbs
   in predictedRules
 

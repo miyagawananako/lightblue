@@ -1,0 +1,2 @@
+(Var) type |- top:T
+  (Con) type |- top:T

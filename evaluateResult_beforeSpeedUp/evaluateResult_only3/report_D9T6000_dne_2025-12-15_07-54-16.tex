@@ -1,0 +1,97 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\geometry{margin=1.5cm}
+
+\definecolor{matchcolor}{RGB}{200,255,200}
+\definecolor{mismatchcolor}{RGB}{255,200,200}
+
+\title{TPTP Evaluation Report}
+\author{NeuralWani Evaluator}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Configuration}
+\begin{itemize}
+\item maxDepth: 9
+\item maxTime: 6000
+\item logicSystem: \textbf{dne}
+\item Session ID: \texttt{D9T6000\_dne\_2025-12-15\_07-54-16}
+\item Proof Trees (Normal): \texttt{evaluateResult/proofTrees\_D9T6000\_dne\_2025-12-15\_07-54-16/normal/}
+\item Proof Trees (NeuralWani): \texttt{evaluateResult/proofTrees\_D9T6000\_dne\_2025-12-15\_07-54-16/neural/}
+\end{itemize}
+
+\section{Summary}
+
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total files processed & 3 \\
+Evaluated & 3 \\
+Skipped & 0 \\
+\midrule
+Normal Prover Correct & 1/3 (33.3\%) \\
+NeuralWani Prover Correct & 1/3 (33.3\%) \\
+\midrule
+Avg. Normal Time & 26.462 sec \\
+Avg. NeuralWani Time & 62.958 sec \\
+\bottomrule
+\end{tabular}
+
+\subsection{Confusion Matrix (Normal Prover)}
+
+\begin{tabular}{l|ccc|c}
+\toprule
+ & \multicolumn{3}{c|}{\textbf{Predicted}} & \\
+\textbf{Actual} & YES & NO & UNK & Total \\
+\midrule
+YES & 1 & 0 & 2 & 3 \\
+NO & 0 & 0 & 0 & 0 \\
+UNK & 0 & 0 & 0 & 0 \\
+\midrule
+Total & 1 & 0 & 2 & 3 \\
+\bottomrule
+\end{tabular}
+
+
+\subsection{Confusion Matrix (NeuralWani Prover)}
+
+\begin{tabular}{l|ccc|c}
+\toprule
+ & \multicolumn{3}{c|}{\textbf{Predicted}} & \\
+\textbf{Actual} & YES & NO & UNK & Total \\
+\midrule
+YES & 1 & 0 & 2 & 3 \\
+NO & 0 & 0 & 0 & 0 \\
+UNK & 0 & 0 & 0 & 0 \\
+\midrule
+Total & 1 & 0 & 2 & 3 \\
+\bottomrule
+\end{tabular}
+
+
+
+\section{Detailed Results}
+
+\begin{longtable}{lcccccccc}
+\toprule
+\textbf{File} & \textbf{Expected} & \textbf{Normal} & \textbf{Time} & \textbf{Match} & \textbf{Neural} & \textbf{Time} & \textbf{Match} & \textbf{Speedup} \\
+\midrule
+\endhead
+SYN/SYN950+1.p & YES & UNKNOWN & 62.943s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 115.329s & \cellcolor{mismatchcolor}$\times$ & 0.55x \\
+SYN/SYN952+1.p & YES & UNKNOWN & 16.308s & \cellcolor{mismatchcolor}$\times$ & UNKNOWN & 61.813s & \cellcolor{mismatchcolor}$\times$ & 0.26x \\
+SYN/SYN958+1.p & YES & YES & 0.134s & \cellcolor{matchcolor}$\checkmark$ & YES & 11.731s & \cellcolor{matchcolor}$\checkmark$ & 0.01x \\
+\bottomrule
+\end{longtable}
+
+
+
+
+\end{document}

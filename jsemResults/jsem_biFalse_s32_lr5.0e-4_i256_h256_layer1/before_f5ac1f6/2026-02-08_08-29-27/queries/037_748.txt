@@ -1,0 +1,1 @@
+(Σ (Σ (Π entity)(Π entity)(Π (Π entity)type)type)(((0 花子/はなこ) 太郎/たろう;太郎/たろう) λ.T))(Σ (Σ entity)(Σ (Π entity)(Π (Π entity)type)type)((0 1) λ.T))(Σ entity)(Σ (Σ entity)((＃コト 1) 0))(Σ ((＃内容 (＃トイウ (Σ entity)(Σ ((さつ 0) 0))T)) 1))(Σ entity)(Σ (((嘆く/なげく/ガヲ 3) 0) 0))(Σ (＃タ 1))T |- ?:(Σ (Σ entity)(Σ entity)(Σ entity)(Σ ((((剥ぐ/はぐ/ガヲニ 2) 1) 花子/はなこ) 0))T)(Σ entity)(Σ ((さつ 0) 0))T

@@ -1,0 +1,24 @@
+(PiI) type |- λ.(π2(0) λ.(π2(1) π1(1))):¬(Σ ¬p)¬¬p
+  (PiE) type, (Σ ¬p)¬¬p |- (π2(0) λ.(π2(1) π1(1))):⊥
+    (SigmaE) type, (Σ ¬p)¬¬p |- π2(0):¬¬p
+      (Var) type, (Σ ¬p)¬¬p |- 0:(Σ ¬p)¬¬p
+    (PiI) type, (Σ ¬p)¬¬p |- λ.(π2(1) π1(1)):¬p
+      (PiE) type, (Σ ¬p)¬¬p, p |- (π2(1) π1(1)):⊥
+        (SigmaE) type, (Σ ¬p)¬¬p, p |- π2(1):¬¬p
+          (Var) type, (Σ ¬p)¬¬p, p |- 1:(Σ ¬p)¬¬p
+        (PiE) type, (Σ ¬p)¬¬p, p |- π1(1):¬p
+          (SigmaE) type, (Σ ¬p)¬¬p, p |- π1(1):¬p
+            (Var) type, (Σ ¬p)¬¬p, p |- 1:(Σ ¬p)¬¬p
+      (Var) type, (Σ ¬p)¬¬p |- p:type
+        (Con) type, (Σ ¬p)¬¬p |- p:type
+  (SigmaF) type |- (Σ ¬p)¬¬p:type
+    (PiF) type, ¬p |- ¬¬p:type
+      (PiF) type, ¬p |- ¬p:type
+        (Var) type, ¬p |- p:type
+          (Con) type, ¬p |- p:type
+        (BotF) type, ¬p, p |- ⊥:type
+      (BotF) type, ¬p, ¬p |- ⊥:type
+    (PiF) type |- ¬p:type
+      (Var) type |- p:type
+        (Con) type |- p:type
+      (BotF) type, p |- ⊥:type
