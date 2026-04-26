@@ -22,4 +22,7 @@ src/.ftpconfig
 stack.yaml.lock
 config.yaml
 .env
+.DS_Store
+
+client_session_key.aes
 TPTP*
