@@ -927,6 +927,31 @@ main = do
   createDirectoryIfMissing True newFolderPath
 
 
+  -- Record what produced this directory. Without it the hyperparameters can
+  -- only be guessed back from the directory name, which does not carry bias,
+  -- epochs or threshold, and nothing records which model was evaluated.
+  let jstr s = "\"" ++ s ++ "\""
+      jmaybe = maybe "null" show
+      configJson = unlines
+        [ "{"
+        , "  " ++ jstr "reusedModel"   ++ ": " ++ maybe "null" jstr reuseDir ++ ","
+        , "  " ++ jstr "jsemDataPath"  ++ ": " ++ jstr jsemDataPath ++ ","
+        , "  " ++ jstr "biDirectional" ++ ": " ++ (if bi then "true" else "false") ++ ","
+        , "  " ++ jstr "embDim"        ++ ": " ++ show emb ++ ","
+        , "  " ++ jstr "hiddenSize"    ++ ": " ++ show h ++ ","
+        , "  " ++ jstr "layers"        ++ ": " ++ show l ++ ","
+        , "  " ++ jstr "bias"          ++ ": " ++ (if bias then "true" else "false") ++ ","
+        , "  " ++ jstr "lr"            ++ ": " ++ show lr ++ ","
+        , "  " ++ jstr "batchSize"     ++ ": " ++ show steps ++ ","
+        , "  " ++ jstr "epochs"        ++ ": " ++ show iter ++ ","
+        , "  " ++ jstr "maxDepth"      ++ ": " ++ show maxDepth ++ ","
+        , "  " ++ jstr "threshold"     ++ ": " ++ jmaybe threshold ++ ","
+        , "  " ++ jstr "topK"          ++ ": " ++ jmaybe topK ++ ","
+        , "  " ++ jstr "runAt"         ++ ": " ++ jstr timeString
+        , "}"
+        ]
+  writeFile (newFolderPath </> "config.json") configJson
+  putStrLn $ "Run config saved to: " ++ (newFolderPath </> "config.json")
   -- With --reuse the model is taken from an earlier run, so training and
   -- saving are skipped and only the proof search evaluation is redone.
   (modelFileName, frequentWordsFileName) <- case reuseDir of
