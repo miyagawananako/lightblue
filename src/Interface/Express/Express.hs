@@ -54,7 +54,11 @@ import qualified Data.ByteString as BS
 import qualified Data.Store as Store
 import qualified DTS.Prover.Wani.SearchLog as SL
 import qualified DTS.Prover.Wani.Prove as WaniProve
-import Data.Aeson (object, (.=), Value)
+import Data.Aeson (object, (.=), Value(..))
+import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Key as AK
+import qualified Data.Aeson.KeyMap as AKM
+import qualified Data.ByteString.Lazy as BL
 
 -- JSeM 用: 各文の N-best ノードを保持する IORef
 -- [(入力文, その文に対する [CCG.Node])] を格納
@@ -1777,44 +1781,77 @@ ensureSearchLog = do
           _ <- LT.toList (LT.take 3 (loggedProver psq))
           return sl
 
+-- | A log saved by jsem-train-eval --searchlog, if LB_EXPRESS_SEARCHLOG points
+-- at one. Serving it lets the page show the search that was actually measured;
+-- re-running the search here would be a different run (logging alone turns off
+-- concurrency, and the failedlst built up along the way differs).
+savedSearchLogSection :: TS.Text -> Handler (Maybe Value)
+savedSearchLogSection key = do
+  mPath <- liftIO $ lookupEnv "LB_EXPRESS_SEARCHLOG"
+  case mPath of
+    Nothing -> return Nothing
+    Just path -> do
+      ebs <- liftIO (try (BL.readFile path) :: IO (Either IOException BL.ByteString))
+      case ebs of
+        Left _ -> return Nothing
+        Right bs -> case Aeson.decode bs of
+          Just (Object o) -> return $ AKM.lookup (AK.fromText key) o
+          _ -> return Nothing
+
 getSearchLogTreeR :: Handler Value
 getSearchLogTreeR = do
-  sl <- liftIO ensureSearchLog
-  events <- liftIO $ SL.getEvents sl
-  let tree = SL.buildSearchTree events
-      totalEvents = length events
-      maxDepth = if null events then 0 else maximum (map SL.evDepth events)
-  return $ object
-    [ "roots" .= tree
-    , "totalEvents" .= totalEvents
-    , "maxDepth" .= maxDepth
-    ]
+  saved <- savedSearchLogSection "tree"
+  case saved of
+    Just v -> return v
+    Nothing -> do
+      sl <- liftIO ensureSearchLog
+      events <- liftIO $ SL.getEvents sl
+      let tree = SL.buildSearchTree events
+          totalEvents = length events
+          maxDepth = if null events then 0 else maximum (map SL.evDepth events)
+      return $ object
+        [ "roots" .= tree
+        , "totalEvents" .= totalEvents
+        , "maxDepth" .= maxDepth
+        ]
 
 getSearchLogStatsR :: Handler Value
 getSearchLogStatsR = do
-  sl <- liftIO ensureSearchLog
-  events <- liftIO $ SL.getEvents sl
-  let tree = SL.buildSearchTree events
-      stats = SL.computeRuleStats tree
-      failures = SL.analyzeFailures events
-  return $ object
-    [ "rules" .= stats
-    , "failures" .= failures
-    ]
+  saved <- savedSearchLogSection "stats"
+  case saved of
+    Just v -> return v
+    Nothing -> do
+      sl <- liftIO ensureSearchLog
+      events <- liftIO $ SL.getEvents sl
+      let tree = SL.buildSearchTree events
+          stats = SL.computeRuleStats tree
+          failures = SL.analyzeFailures events
+      return $ object
+        [ "rules" .= stats
+        , "failures" .= failures
+        ]
 
 getSearchLogFlameR :: Handler Value
 getSearchLogFlameR = do
-  sl <- liftIO ensureSearchLog
-  events <- liftIO $ SL.getEvents sl
-  let tree = SL.buildSearchTree events
-      flame = SL.buildFlameGraph tree
-  return $ toJSON flame
+  saved <- savedSearchLogSection "flame"
+  case saved of
+    Just v -> return v
+    Nothing -> do
+      sl <- liftIO ensureSearchLog
+      events <- liftIO $ SL.getEvents sl
+      let tree = SL.buildSearchTree events
+          flame = SL.buildFlameGraph tree
+      return $ toJSON flame
 
 getSearchLogEventsR :: Handler Value
 getSearchLogEventsR = do
-  sl <- liftIO ensureSearchLog
-  events <- liftIO $ SL.getEvents sl
-  return $ object ["events" .= events]
+  saved <- savedSearchLogSection "events"
+  case saved of
+    Just v -> return v
+    Nothing -> do
+      sl <- liftIO ensureSearchLog
+      events <- liftIO $ SL.getEvents sl
+      return $ object ["events" .= events]
 
 -- | Switch the active demo PSQ. Reads DEMO_PSQ_<n> from the
 -- environment, decodes it as a ProofSearchQuery, replaces
