@@ -53,7 +53,11 @@ import qualified DTS.DTTdeBruijn as DTT
 import qualified DTS.Prover.Wani.BackwardRules as BR
 import qualified DTS.Prover.Wani.Prove as Prove
 import qualified DTS.Prover.Wani.WaniBase as WB
+import qualified DTS.Prover.Wani.SearchLog as SL
 import qualified DTS.DTTdeBruijn as DdB
+import qualified Data.Aeson as Aeson
+import Data.Aeson ((.=))
+import qualified Data.ByteString.Lazy as BL
 
 -- hasktorch関連のインポート
 import Torch.Tensor       (Tensor(..), asValue, asTensor, toDevice)
@@ -356,16 +360,39 @@ saveEvaluationReport outputDir result labels = do
 -- 証明探索（評価）関連の関数
 -- ============================================
 
+-- | Writes a finished search log as the four payloads Express serves under
+-- /searchlog, so the visualisation can render the very search that was
+-- measured instead of re-running it.
+saveSearchLog :: FilePath -> String -> SL.SearchLog -> IO ()
+saveSearchLog dir name sl = do
+  createDirectoryIfMissing True dir
+  events <- SL.getEvents sl
+  let tree = SL.buildSearchTree events
+      value = Aeson.object
+        [ "tree" .= Aeson.object
+            [ "roots" .= tree
+            , "totalEvents" .= length events
+            , "maxDepth" .= (if null events then 0 else maximum (map SL.evDepth events))
+            ]
+        , "stats" .= Aeson.object
+            [ "rules" .= SL.computeRuleStats tree
+            , "failures" .= SL.analyzeFailures events
+            ]
+        , "flame" .= SL.buildFlameGraph tree
+        , "events" .= Aeson.object [ "events" .= events ]
+        ]
+  BL.writeFile (dir </> (name ++ ".json")) (Aeson.encode value)
+
 -- | prove' を使って証明探索を実行し、最初の証明木を取得する
-runProveWithTree :: QT.ProofSearchSetting -> DTT.ProofSearchQuery
+runProveWithTree :: Maybe SL.SearchLog -> QT.ProofSearchSetting -> DTT.ProofSearchQuery
                  -> IO ([I.Tree QT.DTTrule DTT.Judgment], NominalDiffTime)
-runProveWithTree setting query = do
+runProveWithTree mLog setting query = do
   -- 計測に入る前に、クエリを完全評価してGCを実行（ウォームアップ/環境ノイズ除去）
   evaluate $ rnf query
   performMajorGC
   startTime <- getCurrentTime
-  
-  let prover = Prove.prove' setting
+
+  let prover = Prove.prove'WithLog mLog setting
   
   maybeTree <- ListT.head (prover query)
   let trees = case maybeTree of
@@ -436,10 +463,11 @@ buildNeuralWani device model wordMap biDirectional topK delimiterToken =
 evaluateOneProblem :: ProverConfig 
                    -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])  -- ^ NeuralWani関数
                    -> FilePath                                        -- ^ 出力ベースディレクトリ
+                   -> Maybe FilePath                                  -- ^ 探索ログの保存先（Nothing なら記録しない）
                    -> Int                                             -- ^ テストケース番号
                    -> JSeMProblemData
                    -> IO (Maybe ProofSearchEvalResult)
-evaluateOneProblem config neuralWaniFunc outputBaseDir idx problem = 
+evaluateOneProblem config neuralWaniFunc outputBaseDir searchLogDir idx problem =
   case jspInferenceQuery problem of
     Nothing -> return Nothing
     Just query -> do
@@ -462,24 +490,34 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir idx problem =
       -- 実行順序を交互にする（偶数番目と奇数番目で入れ替え）
       -- これにより、ウォームアップやキャッシュの影響を両者で均等にする
       -- 注: runProveWithTree内で計測直前にGCが実行されるため、ここでは不要
-      (normalTrees, normalTime, neuralTrees, neuralTime) <- 
+      -- 出力用ベース名の作成（インデックス + JSeM ID をサニタイズ）
+      let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem)) :: String
+
+      -- Logging is opt-in: it forces the search to run sequentially, so leaving
+      -- it on would silently change what the timings measure.
+      let withLog tag act = case searchLogDir of
+            Nothing -> act Nothing
+            Just dir -> do
+              sl <- SL.newSearchLog
+              r <- act (Just sl)
+              saveSearchLog dir (baseName ++ "_" ++ tag) sl
+              return r
+
+      (normalTrees, normalTime, neuralTrees, neuralTime) <-
         if even idx
         then do
           -- 偶数: Normal → Neural
-          (nTrees, nTime) <- runProveWithTree normalSetting query
-          (nnTrees, nnTime) <- runProveWithTree neuralSetting query
+          (nTrees, nTime) <- withLog "normal" (\ml -> runProveWithTree ml normalSetting query)
+          (nnTrees, nnTime) <- withLog "neural" (\ml -> runProveWithTree ml neuralSetting query)
           return (nTrees, nTime, nnTrees, nnTime)
         else do
           -- 奇数: Neural → Normal
-          (nnTrees, nnTime) <- runProveWithTree neuralSetting query
-          (nTrees, nTime) <- runProveWithTree normalSetting query
+          (nnTrees, nnTime) <- withLog "neural" (\ml -> runProveWithTree ml neuralSetting query)
+          (nTrees, nTime) <- withLog "normal" (\ml -> runProveWithTree ml normalSetting query)
           return (nTrees, nTime, nnTrees, nnTime)
       
       let normalSuccess = not (null normalTrees)
           neuralSuccess = not (null neuralTrees)
-
-      -- 出力用ベース名の作成（インデックス + JSeM ID をサニタイズ）
-      let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem))
 
       -- クエリを保存（解けなくても必ず保存）
       let queriesDir = outputBaseDir </> "queries"
@@ -753,7 +791,9 @@ takeReuseOption [] = (Nothing, [])
 main :: IO ()
 main = do
   rawArgs <- getArgs
-  let (reuseDir, args) = takeReuseOption rawArgs
+  let (reuseDir, args0) = takeReuseOption rawArgs
+      saveSearchLogs = "--searchlog" `elem` args0
+      args = filter (/= "--searchlog") args0
 
   -- コマンドライン引数のパース
   -- Usage: jsem-train-eval-exe [--reuse <dir>] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
@@ -1072,7 +1112,8 @@ main = do
 
     evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
       putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
-      result <- try $ evaluateOneProblem proverConfig neuralWaniFunc evalOutputDir idx problem
+      let mSearchLogDir = if saveSearchLogs then Just (evalOutputDir </> "searchLogs") else Nothing
+      result <- try $ evaluateOneProblem proverConfig neuralWaniFunc evalOutputDir mSearchLogDir idx problem
       case result of
         Right (Just r) -> do
           putStrLn $ "Normal: " ++ TL.unpack (formatTimeNominal (pseNormalTime r)) ++
