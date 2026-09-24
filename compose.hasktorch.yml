@@ -1,0 +1,56 @@
+# ══════════════════════════════════════════════════════════════════════
+# lightblue + hasktorch ビルド環境 (Dockerfile.hasktorch とセット)
+#
+#   # イメージを作る (初回のみ、時間がかかる)
+#   # この Dockerfile はリポジトリから何も COPY しない (ソースは下で
+#   # マウントする) ので、2.4GB のビルドコンテキストを転送しないよう
+#   # 標準入力から渡してコンテキスト無しでビルドする。
+#   docker build --platform linux/amd64 -t lightblue-hasktorch - < Dockerfile.hasktorch
+#
+#   # ビルドする
+#   docker compose -f compose.hasktorch.yml run --rm lightblue stack build
+#
+#   # 中に入る
+#   docker compose -f compose.hasktorch.yml run --rm lightblue bash
+#
+# .stack-work と ~/.stack は名前付きボリュームに逃がしてある。
+# こうしないとコンテナを作り直すたびに全依存を再ビルドすることになる
+# (エミュレーション環境ではこれが致命的に遅い)。またホスト側の
+# .stack-work (aarch64-osx 向け) と混ざるのも防げる。
+# ══════════════════════════════════════════════════════════════════════
+
+services:
+  lightblue:
+    platform: linux/amd64
+    # build: は置かない。上記コメントのコマンドでイメージを作ってから使う
+    # (コンテキスト転送を避けるため)
+    image: lightblue-hasktorch
+    working_dir: /home/ubuntu/lightblue
+    volumes:
+      # ソースはホストと共有し、編集が即座に反映されるようにする
+      - .:/home/ubuntu/lightblue
+      # ビルド成果物はボリュームに隔離 (ホストの aarch64 向け成果物と混ざらない)
+      - lightblue-stack-work:/home/ubuntu/lightblue/.stack-work
+      - lightblue-stack-root:/home/ubuntu/.stack
+    # 名前付きボリュームは root 所有で作られるが、コンテナの実行ユーザーは
+    # ubuntu (uid 1000) なので、stack が
+    #   "You are not the owner of '.stack-work/'. Aborting..."
+    # で停止する。イメージ側にファイルを足さずに済ませるため、起動時に
+    # 所有者を直してから本来のコマンドを exec する。
+    entrypoint:
+      - /bin/bash
+      - -c
+      - 'sudo chown -R ubuntu:ubuntu /home/ubuntu/lightblue/.stack-work /home/ubuntu/.stack 2>/dev/null || true; exec "$@"'
+      - --
+    environment:
+      STACK_YAML: /home/ubuntu/lightblue/stack-docker.yaml
+      LIGHTBLUE: /home/ubuntu/lightblue/
+    # Express を使うとき用 (stack build のみなら不要)
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    tty: true
+
+volumes:
+  lightblue-stack-work:
+  lightblue-stack-root:
