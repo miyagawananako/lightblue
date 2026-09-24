@@ -34,6 +34,7 @@ import qualified Interface.Text as T
 import qualified Interface.HTML as I
 import qualified Interface.PrintParseResult as PPR
 import qualified Interface.Express.Express as Express
+import qualified DTS.Prover.NeuralWani.Builder as NW
 import qualified JSeM as J
 import qualified JSeM.XML as J
 import qualified DTS.UDTTdeBruijn as UDTT
@@ -45,7 +46,7 @@ import qualified DTS.NaturalLanguageInference as NLI
 import qualified JSeM as JSeM                         --jsem
 import qualified ML.Exp.Classification.Bounded as NLP --nlp-tools
 
-data Options = Options Lang Command I.Style NLI.ProverName FilePath Int Int Int Int Int Int Bool Bool Bool Bool (Maybe Int) Bool Bool Bool (Maybe ExpressBrowser) (Maybe LexicalPos)
+data Options = Options Lang Command I.Style NLI.ProverName FilePath Int Int Int Int Int Int Bool Bool Bool Bool (Maybe Int) Bool Bool Bool (Maybe ExpressBrowser) (Maybe LexicalPos) Bool
 
 data Command =
   Parse I.ParseOutput
@@ -254,6 +255,9 @@ optionParser =
       ( long "lexicalPos"
       <> metavar "top|bottom|none"
       <> help "Set Lexical Items position in Express view" ))
+    <*> switch
+      ( long "neuralwani"
+      <> help "If True, use NeuralWani to reorder rules in Express proof search (loads a trained model)" )
 
 parseOptionParser :: Parser Command
 parseOptionParser = Parse
@@ -295,7 +299,7 @@ main = customExecParser p opts >>= lightblueMain
         p = prefs showHelpOnEmpty
 
 lightblueMain :: Options -> IO ()
-lightblueMain (Options lang commands style proverName filepath beamW nParse nTypeCheck nProof maxDepth maxTime noTypeCheck noInference ifTime verbose mDepth noShowCat noShowSem leafVertical mExpressBrowser mLexPos) = do
+lightblueMain (Options lang commands style proverName filepath beamW nParse nTypeCheck nProof maxDepth maxTime noTypeCheck noInference ifTime verbose mDepth noShowCat noShowSem leafVertical mExpressBrowser mLexPos useNeuralWani) = do
   start <- Time.getCurrentTime
   langOptions <- case lang of
                    JP morphaName filterName -> do
@@ -409,10 +413,14 @@ lightblueMain (Options lang commands style proverName filepath beamW nParse nTyp
                 Just BrowserFirefox -> Env.setEnv "LB_EXPRESS_BROWSER" "firefox"
                 Just BrowserDefault -> Env.setEnv "LB_EXPRESS_BROWSER" "default"
                 Nothing             -> return ()
+              mNeuralWani <- if useNeuralWani
+                               then Just <$> NW.neuralWaniBuilder
+                               else return Nothing
               -- ProofSearchSetting を Express に渡す
               Express.setProofSearchSetting $ QT.defaultProofSearchSetting {
                 QT.maxDepth = Just maxDepth,
-                QT.maxTime = Just maxTime
+                QT.maxTime = Just maxTime,
+                QT.neuralWani = mNeuralWani
                 }
               -- Express を起動
               Express.showExpressInference parseSetting prover [("dummy",DTT.Entity)] [] sentences
