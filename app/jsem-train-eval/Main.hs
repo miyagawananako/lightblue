@@ -742,12 +742,21 @@ writeTexReportJSeM outputDir config sessionId results = do
 -- メイン関数
 -- ============================================
 
+-- | Pulls "--reuse <dir>" out of the argument list, leaving the positional
+-- arguments untouched so that existing scripts keep working.
+takeReuseOption :: [String] -> (Maybe FilePath, [String])
+takeReuseOption ("--reuse":d:rest) = let (m, r) = takeReuseOption rest
+                                     in (maybe (Just d) Just m, r)
+takeReuseOption (x:rest) = let (m, r) = takeReuseOption rest in (m, x:r)
+takeReuseOption [] = (Nothing, [])
+
 main :: IO ()
 main = do
-  args <- getArgs
-  
+  rawArgs <- getArgs
+  let (reuseDir, args) = takeReuseOption rawArgs
+
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
+  -- Usage: jsem-train-eval-exe [--reuse <dir>] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
   let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold, topK) = case args of
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
           ( a0                    -- JSeMProblemDataファイルパス
@@ -889,11 +898,8 @@ main = do
   putStrLn $ "Test data (judgment-rule pairs): " ++ show (length testData)
   
   -- ============================================
-  -- Phase 3: モデルの学習
+  -- Model settings and output directory (needed by both paths)
   -- ============================================
-  putStrLn ""
-  putStrLn "=== Phase 3: Training Model ==="
-  
   let device = Device CUDA 0
       biDirectional = bi
       embDim = emb
@@ -906,63 +912,80 @@ main = do
       hyperParams = HypParams device biDirectional embDim hasBias projSize vocabSize numOfLayers hiddenSize numOfRules
       learningRate = toDevice device (asTensor (lr :: Float))
       numberOfBatch = steps
-  
-  putStrLn $ "HyperParams: " ++ show hyperParams
-  putStrLn $ "Learning rate: " ++ show lr
-  putStrLn $ "Batch size: " ++ show numberOfBatch
-  putStrLn $ "Epochs: " ++ show iter
-  
-  startTime <- Time.getCurrentTime
-  putStrLn $ "Training started at: " ++ show startTime
-  
-  (trainedModel, lossesPair, frequentWords') <- trainModel device hyperParams trainData validData biDirectional iter numberOfBatch learningRate frequentWords
-  
-  endTime <- Time.getCurrentTime
-  let trainingDuration = Time.diffUTCTime endTime startTime
-  putStrLn $ "Training finished at: " ++ show endTime
-  putStrLn $ "Total training time: " ++ show trainingDuration
-  
-  -- ============================================
-  -- Phase 4: モデルの保存
-  -- ============================================
-  putStrLn ""
-  putStrLn "=== Phase 4: Saving Model ==="
-  
+
   currentTime <- getZonedTime
   let timeString = Time.formatTime Time.defaultTimeLocale "%Y-%m-%d_%H-%M-%S" (zonedTimeToLocalTime currentTime)
-      folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++ 
-                   "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++ 
+      folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++
+                   "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++
                    "_h" ++ show hiddenSize ++ "_layer" ++ show numOfLayers
       baseFolderPath = "jsemResults" </> folderName </> timeString
       topKDirName = case topK of
         Nothing -> "topk_nothing"
         Just k -> "topk_" ++ show k
       newFolderPath = baseFolderPath </> topKDirName
-  
-  createDirectoryIfMissing True newFolderPath
-  
-  let modelFileName = newFolderPath </> "seq-class.model"
-      frequentWordsFileName = newFolderPath </> "frequentWords.bin"
-      graphFileName = newFolderPath </> "graph-seq-class.png"
-      (losses, validLosses) = unzip lossesPair
-      learningCurveTitle = "JSeM: bi=" ++ show biDirectional ++ " h=" ++ show hiddenSize
-  
-  saveParams trainedModel modelFileName
-  B.writeFile frequentWordsFileName (encode frequentWords')
-  drawLearningCurve graphFileName learningCurveTitle [("training", reverse losses), ("validation", reverse validLosses)]
-  
-  putStrLn $ "Model saved to: " ++ modelFileName
-  putStrLn $ "FrequentWords saved to: " ++ frequentWordsFileName
-  putStrLn $ "Learning curve saved to: " ++ graphFileName
 
-  -- 以降の成果物保存場所の案内
-  putStrLn $ "Proof trees will be saved under: " ++ (newFolderPath </> "proofTrees")
-  putStrLn $ "Queries will be saved under:     " ++ (newFolderPath </> "queries")
-  
-  -- テストデータに対する予測評価（分類精度）
-  evalResult <- evaluateModel device trainedModel testData biDirectional
-  saveEvaluationReport newFolderPath evalResult allLabels
-  putStrLn $ "Classification Accuracy: " ++ show (erAccuracy evalResult)
+  createDirectoryIfMissing True newFolderPath
+
+
+  -- With --reuse the model is taken from an earlier run, so training and
+  -- saving are skipped and only the proof search evaluation is redone.
+  (modelFileName, frequentWordsFileName) <- case reuseDir of
+    Just d -> do
+      putStrLn ""
+      putStrLn "=== Phase 3-4: Skipped (reusing an existing model) ==="
+      putStrLn $ "Reusing model from: " ++ d
+      return (d </> "seq-class.model", d </> "frequentWords.bin")
+    Nothing -> do
+      -- ============================================
+      -- Phase 3: Training the model
+      -- ============================================
+      putStrLn ""
+      putStrLn "=== Phase 3: Training Model ==="
+
+      putStrLn $ "HyperParams: " ++ show hyperParams
+      putStrLn $ "Learning rate: " ++ show lr
+      putStrLn $ "Batch size: " ++ show numberOfBatch
+      putStrLn $ "Epochs: " ++ show iter
+
+      startTime <- Time.getCurrentTime
+      putStrLn $ "Training started at: " ++ show startTime
+
+      (trainedModel, lossesPair, frequentWords') <- trainModel device hyperParams trainData validData biDirectional iter numberOfBatch learningRate frequentWords
+
+      endTime <- Time.getCurrentTime
+      let trainingDuration = Time.diffUTCTime endTime startTime
+      putStrLn $ "Training finished at: " ++ show endTime
+      putStrLn $ "Total training time: " ++ show trainingDuration
+      -- ============================================
+      -- Phase 4: モデルの保存
+      -- ============================================
+      putStrLn ""
+      putStrLn "=== Phase 4: Saving Model ==="
+
+
+      let modelFileName = newFolderPath </> "seq-class.model"
+          frequentWordsFileName = newFolderPath </> "frequentWords.bin"
+          graphFileName = newFolderPath </> "graph-seq-class.png"
+          (losses, validLosses) = unzip lossesPair
+          learningCurveTitle = "JSeM: bi=" ++ show biDirectional ++ " h=" ++ show hiddenSize
+
+      saveParams trainedModel modelFileName
+      B.writeFile frequentWordsFileName (encode frequentWords')
+      drawLearningCurve graphFileName learningCurveTitle [("training", reverse losses), ("validation", reverse validLosses)]
+
+      putStrLn $ "Model saved to: " ++ modelFileName
+      putStrLn $ "FrequentWords saved to: " ++ frequentWordsFileName
+      putStrLn $ "Learning curve saved to: " ++ graphFileName
+
+      -- 以降の成果物保存場所の案内
+      putStrLn $ "Proof trees will be saved under: " ++ (newFolderPath </> "proofTrees")
+      putStrLn $ "Queries will be saved under:     " ++ (newFolderPath </> "queries")
+
+      -- テストデータに対する予測評価（分類精度）
+      evalResult <- evaluateModel device trainedModel testData biDirectional
+      saveEvaluationReport newFolderPath evalResult allLabels
+      putStrLn $ "Classification Accuracy: " ++ show (erAccuracy evalResult)
+      return (modelFileName, frequentWordsFileName)
   
   -- ============================================
   -- Phase 5: 証明探索による速度評価（時間制限 30000/60000/90000 を試す）
@@ -983,8 +1006,20 @@ main = do
 
   -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
   let maxTestCases = 50  -- 最大テストケース数
-      testCases = take maxTestCases proofSearchTestProblems
       timeLimits = [30000, 60000, 90000]
+
+  -- Reuse the very test cases of the run being reused, otherwise the
+  -- freshly shuffled split would not be comparable with it.
+  testCases <- case reuseDir of
+    Nothing -> return $ take maxTestCases proofSearchTestProblems
+    Just d -> do
+      let f = d </> "testCases.bin"
+      e <- decode <$> B.readFile f
+      case e of
+        Left err -> error $ "Failed to decode " ++ f ++ ": " ++ show err
+        Right tcs -> do
+          putStrLn $ "Test cases loaded from: " ++ f
+          return tcs
 
   let testCasesFileName = newFolderPath </> "testCases.bin"
   B.writeFile testCasesFileName (encode testCases)
