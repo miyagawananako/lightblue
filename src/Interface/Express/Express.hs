@@ -16,7 +16,7 @@ import Yesod
 import qualified Data.Text.Lazy as T      --text
 import qualified Data.Text as TS          -- strict text for JSON
 import qualified Interface.Express.Lightblue as L
-import Data.List (null, find, zip7, maximumBy, sortOn, nubBy)
+import Data.List (null, find, zip7, maximumBy, sortOn, nubBy, isSuffixOf)
 import qualified Interface.Express.WidgetExpress as WE
 import qualified DTS.NaturalLanguageInference as NLI
 import Text.Julius (juliusFile)
@@ -1785,73 +1785,65 @@ ensureSearchLog = do
 -- at one. Serving it lets the page show the search that was actually measured;
 -- re-running the search here would be a different run (logging alone turns off
 -- concurrency, and the failedlst built up along the way differs).
+-- A .jsonl file holds the raw events, one per line, and the section is built
+-- from them here; a .json file holds the four sections already built.
 savedSearchLogSection :: TS.Text -> Handler (Maybe Value)
 savedSearchLogSection key = do
   mPath <- liftIO $ lookupEnv "LB_EXPRESS_SEARCHLOG"
   case mPath of
     Nothing -> return Nothing
-    Just path -> do
-      ebs <- liftIO (try (BL.readFile path) :: IO (Either IOException BL.ByteString))
-      case ebs of
-        Left _ -> return Nothing
-        Right bs -> case Aeson.decode bs of
-          Just (Object o) -> return $ AKM.lookup (AK.fromText key) o
-          _ -> return Nothing
+    Just path
+      | ".jsonl" `isSuffixOf` path -> do
+          eevs <- liftIO (try (SL.readEventsFile path) :: IO (Either IOException [SL.SearchEvent]))
+          return $ either (const Nothing) (Just . searchLogSection key) eevs
+      | otherwise -> do
+          ebs <- liftIO (try (BL.readFile path) :: IO (Either IOException BL.ByteString))
+          case ebs of
+            Left _ -> return Nothing
+            Right bs -> case Aeson.decode bs of
+              Just (Object o) -> return $ AKM.lookup (AK.fromText key) o
+              _ -> return Nothing
+
+-- | One of the payloads served under /searchlog ("tree", "stats", "flame"
+-- or "events"), built from the recorded events.
+searchLogSection :: TS.Text -> [SL.SearchEvent] -> Value
+searchLogSection key events = case key of
+  "tree" -> object
+    [ "roots" .= tree
+    , "totalEvents" .= length events
+    , "maxDepth" .= (if null events then 0 else maximum (map SL.evDepth events))
+    ]
+  "stats" -> object
+    [ "rules" .= SL.computeRuleStats tree
+    , "failures" .= SL.analyzeFailures events
+    ]
+  "flame" -> toJSON (SL.buildFlameGraph tree)
+  _ -> object ["events" .= events]
+  where tree = SL.buildSearchTree events
+
+-- | Serves a saved log's section if there is one, otherwise the section of
+-- the live search log (running the search first if needed).
+searchLogHandler :: TS.Text -> Handler Value
+searchLogHandler key = do
+  saved <- savedSearchLogSection key
+  case saved of
+    Just v -> return v
+    Nothing -> do
+      sl <- liftIO ensureSearchLog
+      events <- liftIO $ SL.getEvents sl
+      return $ searchLogSection key events
 
 getSearchLogTreeR :: Handler Value
-getSearchLogTreeR = do
-  saved <- savedSearchLogSection "tree"
-  case saved of
-    Just v -> return v
-    Nothing -> do
-      sl <- liftIO ensureSearchLog
-      events <- liftIO $ SL.getEvents sl
-      let tree = SL.buildSearchTree events
-          totalEvents = length events
-          maxDepth = if null events then 0 else maximum (map SL.evDepth events)
-      return $ object
-        [ "roots" .= tree
-        , "totalEvents" .= totalEvents
-        , "maxDepth" .= maxDepth
-        ]
+getSearchLogTreeR = searchLogHandler "tree"
 
 getSearchLogStatsR :: Handler Value
-getSearchLogStatsR = do
-  saved <- savedSearchLogSection "stats"
-  case saved of
-    Just v -> return v
-    Nothing -> do
-      sl <- liftIO ensureSearchLog
-      events <- liftIO $ SL.getEvents sl
-      let tree = SL.buildSearchTree events
-          stats = SL.computeRuleStats tree
-          failures = SL.analyzeFailures events
-      return $ object
-        [ "rules" .= stats
-        , "failures" .= failures
-        ]
+getSearchLogStatsR = searchLogHandler "stats"
 
 getSearchLogFlameR :: Handler Value
-getSearchLogFlameR = do
-  saved <- savedSearchLogSection "flame"
-  case saved of
-    Just v -> return v
-    Nothing -> do
-      sl <- liftIO ensureSearchLog
-      events <- liftIO $ SL.getEvents sl
-      let tree = SL.buildSearchTree events
-          flame = SL.buildFlameGraph tree
-      return $ toJSON flame
+getSearchLogFlameR = searchLogHandler "flame"
 
 getSearchLogEventsR :: Handler Value
-getSearchLogEventsR = do
-  saved <- savedSearchLogSection "events"
-  case saved of
-    Just v -> return v
-    Nothing -> do
-      sl <- liftIO ensureSearchLog
-      events <- liftIO $ SL.getEvents sl
-      return $ object ["events" .= events]
+getSearchLogEventsR = searchLogHandler "events"
 
 -- | Switch the active demo PSQ. Reads DEMO_PSQ_<n> from the
 -- environment, decodes it as a ProofSearchQuery, replaces

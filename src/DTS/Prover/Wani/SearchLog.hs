@@ -11,6 +11,9 @@ module DTS.Prover.Wani.SearchLog (
   -- * Search log handle
   SearchLog(..),
   newSearchLog,
+  newFileSearchLog,
+  closeSearchLog,
+  readEventsFile,
   recordEvent,
   recordEventWithIdx,
   recordGoalStart,
@@ -32,13 +35,18 @@ module DTS.Prover.Wani.SearchLog (
 ) where
 
 import Data.IORef
+import Control.Concurrent.MVar (MVar, newMVar, withMVar)
+import System.IO (Handle, IOMode(..), BufferMode(..), openBinaryFile, hSetBuffering, hClose)
+import qualified Data.ByteString.Lazy.Char8 as BLC
+import Data.Maybe (mapMaybe)
 import qualified Data.Sequence as Seq
 import Data.Sequence (Seq, (|>))
 import qualified Data.Text.Lazy as T
 import qualified Data.Time.Clock as Time
+import Data.Time.Calendar (Day(ModifiedJulianDay))
 import qualified Data.Map.Strict as Map
 import qualified Data.List as L
-import Data.Aeson (ToJSON(..), object, (.=))
+import Data.Aeson (ToJSON(..), FromJSON(..), object, (.=), (.:), (.:?), withObject, withText, encode, decode)
 
 -- | Event kinds corresponding to debug log points in BackwardWithRules.hs
 data SearchEventKind
@@ -77,14 +85,47 @@ data SearchEvent = SearchEvent
 data SearchLog = SearchLog
   { slEvents  :: !(IORef (Seq SearchEvent))
   , slCounter :: !(IORef Int)
+  , slSink    :: !(Maybe (MVar Handle))
+    -- ^ When set, events are written here as JSON Lines instead of being
+    -- kept in 'slEvents'. A deep search records millions of events, each
+    -- carrying the whole sequent, so holding them all does not fit in memory.
   }
 
--- | Create a new empty search log
+-- | Create a new empty search log that keeps its events in memory
 newSearchLog :: IO SearchLog
 newSearchLog = do
   events <- newIORef Seq.empty
   counter <- newIORef 0
-  return $ SearchLog events counter
+  return $ SearchLog events counter Nothing
+
+-- | Create a search log that streams each event to the given file as one
+-- JSON object per line. 'getEvents' returns nothing for such a log; read
+-- the file back with 'readEventsFile'. Close it with 'closeSearchLog'.
+newFileSearchLog :: FilePath -> IO SearchLog
+newFileSearchLog path = do
+  h <- openBinaryFile path WriteMode
+  hSetBuffering h (BlockBuffering Nothing)
+  sink <- newMVar h
+  events <- newIORef Seq.empty
+  counter <- newIORef 0
+  return $ SearchLog events counter (Just sink)
+
+-- | Flush and close the file of a log made by 'newFileSearchLog'
+closeSearchLog :: SearchLog -> IO ()
+closeSearchLog sl = case slSink sl of
+  Nothing -> return ()
+  Just sink -> withMVar sink hClose
+
+-- | Store one event, in memory or in the file depending on the log
+appendEvent :: SearchLog -> SearchEvent -> IO ()
+appendEvent sl ev = case slSink sl of
+  Nothing -> atomicModifyIORef' (slEvents sl) (\s -> (s |> ev, ()))
+  Just sink -> withMVar sink $ \h -> BLC.hPut h (encode ev) >> BLC.hPut h "\n"
+
+-- | Read back the events written by a 'newFileSearchLog' log. A line that
+-- does not decode (e.g. the last one of a run that was killed) is skipped.
+readEventsFile :: FilePath -> IO [SearchEvent]
+readEventsFile path = mapMaybe decode . BLC.lines <$> BLC.readFile path
 
 -- | Record an event. Returns the event ID. No-op if the SearchLog is Nothing.
 recordEvent :: Maybe SearchLog -> SearchEventKind -> Int -> T.Text -> Maybe T.Text -> T.Text -> IO Int
@@ -117,7 +158,7 @@ recordGoalStart (Just sl) kind depth goalStr ruleName message mIdx mParent mSubg
         , evParentGoalId = mParent
         , evSubgoalSetId = mSubgoalSet
         }
-  atomicModifyIORef' (slEvents sl) (\s -> (s |> ev, ()))
+  appendEvent sl ev
   return eid
 
 -- | Record an event associated with a specific goal (using its GoalStart ID).
@@ -139,7 +180,7 @@ recordEventForGoal (Just sl) goalStartId kind depth goalStr ruleName message = d
         , evParentGoalId = Nothing
         , evSubgoalSetId = Nothing
         }
-  atomicModifyIORef' (slEvents sl) (\s -> (s |> ev, ()))
+  appendEvent sl ev
 
 -- | Record a GoalEnd event with the matching GoalStart's ID.
 recordGoalEnd :: Maybe SearchLog -> Int -> Int -> T.Text -> T.Text -> IO ()
@@ -160,7 +201,7 @@ recordGoalEnd (Just sl) goalStartId depth goalStr message = do
         , evParentGoalId = Nothing
         , evSubgoalSetId = Nothing
         }
-  atomicModifyIORef' (slEvents sl) (\s -> (s |> ev, ()))
+  appendEvent sl ev
 
 -- | Retrieve all recorded events as a list
 getEvents :: SearchLog -> IO [SearchEvent]
@@ -398,9 +439,48 @@ instance ToJSON SearchEvent where
     , "rule"      .= evRuleName e
     , "message"   .= evMessage e
     , "goalId"    .= evGoalId e
+    , "subgoalIndex" .= evSubgoalIndex e
     , "parentGoalId" .= evParentGoalId e
     , "subgoalSetId" .= evSubgoalSetId e
     ]
+
+-- FromJSON instances, for reading back a log written by 'newFileSearchLog'
+
+instance FromJSON SearchEventKind where
+  parseJSON = withText "SearchEventKind" $ \t -> case t of
+    "goal_start"     -> return EvGoalStart
+    "goal_end"       -> return EvGoalEnd
+    "depth_exceeded" -> return EvDepthExceeded
+    "avoid_loop"     -> return EvAvoidLoop
+    "time_limit"     -> return EvTimeLimit
+    "rule_attempt"   -> return EvRuleAttempt
+    "rule_reject"    -> return EvRuleReject
+    "rule_accept"    -> return EvRuleAccept
+    "rule_exit"      -> return EvRuleExit
+    "deduced"        -> return EvDeduced
+    "deduce_failed"  -> return EvDeduceFailed
+    "goal_update"    -> return EvGoalUpdate
+    "iter_deepen"    -> return EvIterDeepen
+    "special_case"   -> return EvSpecialCase
+    _                -> fail ("unknown event kind: " ++ show t)
+
+instance FromJSON SearchEvent where
+  parseJSON = withObject "SearchEvent" $ \o -> do
+    secs <- o .: "timestamp"
+    SearchEvent
+      <$> o .: "id"
+      <*> o .: "kind"
+      <*> o .: "depth"
+      -- only the time of day is written, so the date is lost; durations
+      -- are differences and stay correct unless the run crosses midnight
+      <*> pure (Time.UTCTime (ModifiedJulianDay 0) (realToFrac (secs :: Double)))
+      <*> o .: "goal"
+      <*> o .:? "rule"
+      <*> o .: "message"
+      <*> o .: "goalId"
+      <*> o .:? "subgoalIndex"
+      <*> o .:? "parentGoalId"
+      <*> o .:? "subgoalSetId"
 
 instance ToJSON SearchTreeNode where
   toJSON n = object

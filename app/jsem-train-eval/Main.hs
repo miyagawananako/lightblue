@@ -21,7 +21,7 @@ module Main (main) where
 import Control.Monad (forM, forM_)
 import Control.DeepSeq (rnf)
 import Data.Char (isAlphaNum)
-import Control.Exception (evaluate, try, SomeException)
+import Control.Exception (evaluate, try, bracket, SomeException)
 import System.Random.Shuffle (shuffleM)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import System.FilePath ((</>))
@@ -360,28 +360,15 @@ saveEvaluationReport outputDir result labels = do
 -- 証明探索（評価）関連の関数
 -- ============================================
 
--- | Writes a finished search log as the four payloads Express serves under
--- /searchlog, so the visualisation can render the very search that was
--- measured instead of re-running it.
-saveSearchLog :: FilePath -> String -> SL.SearchLog -> IO ()
-saveSearchLog dir name sl = do
+-- | Runs an action with a search log that streams its events to
+-- <dir>/<name>.jsonl while the search goes on, so Express can later render
+-- the very search that was measured instead of re-running it. Building the
+-- tree, stats and flame graph here would need every event in memory at once,
+-- which a depth-9 search does not fit into; Express builds them on demand.
+withFileSearchLog :: FilePath -> String -> (SL.SearchLog -> IO a) -> IO a
+withFileSearchLog dir name act = do
   createDirectoryIfMissing True dir
-  events <- SL.getEvents sl
-  let tree = SL.buildSearchTree events
-      value = Aeson.object
-        [ "tree" .= Aeson.object
-            [ "roots" .= tree
-            , "totalEvents" .= length events
-            , "maxDepth" .= (if null events then 0 else maximum (map SL.evDepth events))
-            ]
-        , "stats" .= Aeson.object
-            [ "rules" .= SL.computeRuleStats tree
-            , "failures" .= SL.analyzeFailures events
-            ]
-        , "flame" .= SL.buildFlameGraph tree
-        , "events" .= Aeson.object [ "events" .= events ]
-        ]
-  BL.writeFile (dir </> (name ++ ".json")) (Aeson.encode value)
+  bracket (SL.newFileSearchLog (dir </> (name ++ ".jsonl"))) SL.closeSearchLog act
 
 -- | prove' を使って証明探索を実行し、最初の証明木を取得する
 runProveWithTree :: Maybe SL.SearchLog -> QT.ProofSearchSetting -> DTT.ProofSearchQuery
@@ -497,11 +484,7 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir searchLogDir idx problem 
       -- it on would silently change what the timings measure.
       let withLog tag act = case searchLogDir of
             Nothing -> act Nothing
-            Just dir -> do
-              sl <- SL.newSearchLog
-              r <- act (Just sl)
-              saveSearchLog dir (baseName ++ "_" ++ tag) sl
-              return r
+            Just dir -> withFileSearchLog dir (baseName ++ "_" ++ tag) (act . Just)
 
       (normalTrees, normalTime, neuralTrees, neuralTime) <-
         if even idx
