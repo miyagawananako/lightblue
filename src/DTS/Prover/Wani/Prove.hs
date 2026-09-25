@@ -93,7 +93,9 @@ prove'WithLog mLog QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) 
         WB.oracle = oracle,
         WB.oracleThreshold=0.5,
         WB.enableEq = True,
-        WB.enableConcurrent = M.isNothing mLog,  -- sequential execution required for search log accuracy
+        -- A search log needs sequential execution to be accurate, so it
+        -- overrides `concurrent`; without one, `concurrent` defaults to True.
+        WB.enableConcurrent = M.isNothing mLog && M.fromMaybe True concurrent,
         WB.getPrioritizedRules = neuralWani,
         WB.searchLog = mLog,
         WB.searchLogRuleName = Nothing,

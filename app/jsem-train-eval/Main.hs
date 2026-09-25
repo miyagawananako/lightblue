@@ -18,7 +18,7 @@
 
 module Main (main) where
 
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, when)
 import Control.DeepSeq (rnf)
 import Data.Char (isAlphaNum)
 import Control.Exception (evaluate, try, bracket, SomeException)
@@ -138,6 +138,7 @@ data ProofSearchEvalResult = ProofSearchEvalResult
 data ProverConfig = ProverConfig
   { cfgMaxDepth     :: Int
   , cfgMaxTime      :: Int
+  , cfgConcurrent   :: Maybe Bool  -- ^ Nothing: wani's default (concurrent unless logging)
   } deriving (Show)
 
 -- | 評価結果を格納するデータ型
@@ -464,14 +465,16 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir searchLogDir idx problem 
       -- Normal Proverの設定
       let normalSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
-                QT.maxTime = Just (cfgMaxTime config)
+                QT.maxTime = Just (cfgMaxTime config),
+                QT.concurrent = cfgConcurrent config
                 }
       
       -- NeuralWani Proverの設定
       let neuralSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
                 QT.maxTime = Just (cfgMaxTime config),
-                QT.neuralWani = Just neuralWaniFunc
+                QT.neuralWani = Just neuralWaniFunc,
+                QT.concurrent = cfgConcurrent config
                 }
       
       -- 実行順序を交互にする（偶数番目と奇数番目で入れ替え）
@@ -597,6 +600,7 @@ saveProofSearchReport outputDir config results = do
         , "Configuration:"
         , "  maxDepth: " ++ show (cfgMaxDepth config)
         , "  maxTime: " ++ show (cfgMaxTime config)
+        , "  concurrent: " ++ maybe "default" show (cfgConcurrent config)
         , ""
         , "Results:"
         , "  Total tests: " ++ show totalTests
@@ -776,10 +780,23 @@ main = do
   rawArgs <- getArgs
   let (reuseDir, args0) = takeReuseOption rawArgs
       saveSearchLogs = "--searchlog" `elem` args0
-      args = filter (/= "--searchlog") args0
+      -- --sequential / --concurrent choose how wani runs independently of
+      -- logging, so timings can be taken sequentially without the cost of
+      -- writing a log. Neither given keeps wani's default.
+      concurrency
+        | "--sequential" `elem` args0 = Just False
+        | "--concurrent" `elem` args0 = Just True
+        | otherwise = Nothing
+      args = filter (`notElem` ["--searchlog", "--sequential", "--concurrent"]) args0
+
+  when ("--sequential" `elem` args0 && "--concurrent" `elem` args0) $
+    error "--sequential and --concurrent cannot be given together"
+  -- A search log forces sequential execution, so --concurrent would be ignored.
+  when (saveSearchLogs && concurrency == Just True) $
+    error "--searchlog runs the search sequentially; it cannot be combined with --concurrent"
 
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe [--reuse <dir>] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
+  -- Usage: jsem-train-eval-exe [--reuse <dir>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
   let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold, topK) = case args of
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
           ( a0                    -- JSeMProblemDataファイルパス
@@ -824,7 +841,7 @@ main = do
           , Just (read a11 :: Int) -- topK (optional)
           )
         _ -> error $ unlines
-          [ "Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
+          [ "Usage: jsem-train-eval-exe [--reuse <dir>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
           , ""
           , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9"
           , "Example (with topK and threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000 5"
@@ -842,6 +859,12 @@ main = do
           , "  maxDepth      : Int    - Max proof search depth"
           , "  threshold     : Int    - Optional cap per label for training (omit for no cap)"
           , "  topK          : Int    - Number of top rules to consider"
+          , ""
+          , "Options:"
+          , "  --reuse <dir> : Evaluate the model, word map and test cases in <dir> instead of training"
+          , "  --searchlog   : Write each search's events to eval_T*/searchLogs/*.jsonl (forces sequential search)"
+          , "  --sequential  : Run wani sequentially (use this for timings comparable with --searchlog runs)"
+          , "  --concurrent  : Run wani concurrently"
           ]
   
   putStrLn "=== JSeM Train & Evaluate ==="
@@ -970,6 +993,8 @@ main = do
         , "  " ++ jstr "maxDepth"      ++ ": " ++ show maxDepth ++ ","
         , "  " ++ jstr "threshold"     ++ ": " ++ jmaybe threshold ++ ","
         , "  " ++ jstr "topK"          ++ ": " ++ jmaybe topK ++ ","
+        , "  " ++ jstr "searchLog"     ++ ": " ++ (if saveSearchLogs then "true" else "false") ++ ","
+        , "  " ++ jstr "concurrent"    ++ ": " ++ maybe "null" (\c -> if c then "true" else "false") concurrency ++ ","
         , "  " ++ jstr "runAt"         ++ ": " ++ jstr timeString
         , "}"
         ]
@@ -1084,6 +1109,7 @@ main = do
     let proverConfig = ProverConfig
           { cfgMaxDepth = maxDepth
           , cfgMaxTime = timeLimit
+          , cfgConcurrent = concurrency
           }
         evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
 
