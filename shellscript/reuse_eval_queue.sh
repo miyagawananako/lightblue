@@ -7,7 +7,8 @@
 # (--cachescope timelimit) のを比べる。
 # どちらでも時間制限どうしは独立するので、まず全設定を両方の条件の T30000 だけで
 # 評価し、そのあとで問題ごとの T60000 と T90000 を評価する。途中で止まっても、
-# そこまでの T30000 は全設定分そろう。
+# そこまでの T30000 は全設定分そろう。そのあとに、2/19 のモデルで可視化用の
+# 探索ログを取る。
 # 引数に PID を渡すと、そのプロセスの終了を待ってから始める。
 
 WAIT_PID="$1"
@@ -40,6 +41,7 @@ mkdir -p logs
 # run <log name> <jsem-train-eval-exe args...>
 run() {
   local LOG="logs/$1_$(date +%Y-%m-%d_%H-%M-%S).log"
+  LAST_LOG="$LOG"
   shift
   echo "=== $* -> $LOG"
   if ! stack exec jsem-train-eval-exe -- "$@" > "$LOG" 2>&1; then
@@ -79,6 +81,24 @@ for LAYERS in 1 2; do
     echo "skipped: no trained model for biTrue i512 layer$LAYERS"
   fi
 done
+
+# --- 可視化用の探索ログ: 2/19 のモデル、T30000 ---
+# ログの書き出しは計測に影響するので、時間はここでは比べない。1問で 1〜3GB に
+# なるので、ディスクの空きが足りなければ飛ばす。
+FREE_GB=$(df -BG --output=avail . | tail -1 | tr -dc '0-9')
+if [ "$FREE_GB" -ge 300 ]; then
+  run "searchlog_2026-02-19model_T30000" \
+      --reuse "$R/jsem_biFalse_s32_lr5.0e-4_i128_h128_layer1/2026-02-19_12-10-22" \
+      --timelimits 30000 --searchlog --cachescope problem \
+      "$DATA" False 128 128 1 $COMMON
+  # フォルダ名だけでは計測の実行と区別できないので、末尾に _searchlog を付ける
+  OUT=$(sed -n 's|^Run config saved to: \(.*\)/config.json$|\1|p' "$LAST_LOG" | head -1)
+  if [ -n "$OUT" ] && [ -d "$OUT" ]; then
+    mv "$OUT" "${OUT}_searchlog" && echo "renamed: $OUT -> ${OUT}_searchlog"
+  fi
+else
+  echo "skipped: search log run needs 300GB free, only ${FREE_GB}GB"
+fi
 
 # --- 3周目: 問題ごとにキャッシュを空にして T60000, T90000 ---
 for entry in "${REUSE_RUNS[@]}"; do
