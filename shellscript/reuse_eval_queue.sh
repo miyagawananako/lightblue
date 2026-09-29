@@ -3,10 +3,11 @@
 # 4/29〜6/2 の総当たり実験 (jsemtypecheck.sh) で、並列モードのせいで評価が
 # 止まったモデルを --reuse で逐次評価し直すスクリプト。
 # 元の実験 (2/19) と同じく逐次 (--sequential) で測り、NeuralWani のキャッシュは
-# 問題ごとに空にする (--cachescope problem)。
-# 問題ごとに空にすると時間制限どうしが独立するので、まず全設定を T30000 だけで
-# 評価し、そのあとで T60000 と T90000 を評価する。途中で止まっても、そこまでの
-# T30000 は全設定分そろう。
+# 問題ごとに空にする (--cachescope problem) のと、時間制限ごとに空にする
+# (--cachescope timelimit) のを比べる。
+# どちらでも時間制限どうしは独立するので、まず全設定を両方の条件の T30000 だけで
+# 評価し、そのあとで問題ごとの T60000 と T90000 を評価する。途中で止まっても、
+# そこまでの T30000 は全設定分そろう。
 # 引数に PID を渡すと、そのプロセスの終了を待ってから始める。
 
 WAIT_PID="$1"
@@ -59,7 +60,27 @@ for LAYERS in 1 2; do
       "$DATA" True 512 512 "$LAYERS" $COMMON
 done
 
-# --- 2周目: T60000, T90000 ---
+# --- 2周目: 時間制限ごとにキャッシュを空にして T30000 ---
+# 時間制限ごとに空にしても時間制限どうしは独立なので、T30000 だけで比べられる。
+TL_OPTS="--sequential --cachescope timelimit"
+for entry in "${REUSE_RUNS[@]}"; do
+  read -r DIR BI EMB LAYERS <<< "$entry"
+  run "reuse_bi${BI}_i${EMB}_layer${LAYERS}_T30000_cachetimelimit" --reuse "$DIR" --timelimits 30000 $TL_OPTS \
+      "$DATA" "$BI" "$EMB" "$EMB" "$LAYERS" $COMMON
+done
+
+# 1周目で学習したモデルを使う（学習に失敗していれば飛ばす）
+for LAYERS in 1 2; do
+  DIR=$(ls -td "$R"/jsem_biTrue_s32_lr5.0e-4_i512_h512_layer${LAYERS}/*/topk_nothing_cache-problem 2>/dev/null | head -1)
+  if [ -n "$DIR" ] && [ -f "$DIR/seq-class.model" ]; then
+    run "reuse_biTrue_i512_layer${LAYERS}_T30000_cachetimelimit" --reuse "$DIR" --timelimits 30000 $TL_OPTS \
+        "$DATA" True 512 512 "$LAYERS" $COMMON
+  else
+    echo "skipped: no trained model for biTrue i512 layer$LAYERS"
+  fi
+done
+
+# --- 3周目: 問題ごとにキャッシュを空にして T60000, T90000 ---
 for entry in "${REUSE_RUNS[@]}"; do
   read -r DIR BI EMB LAYERS <<< "$entry"
   run "reuse_bi${BI}_i${EMB}_layer${LAYERS}_T60000-90000" --reuse "$DIR" --timelimits 60000,90000 $OPTS \
