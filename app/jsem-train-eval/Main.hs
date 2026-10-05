@@ -426,9 +426,8 @@ writeProofTrees baseDir baseName trees = do
         writeProofTreeHTML htmlPath tree
 
 -- | NeuralWaniを構築する関数（学習済みモデルから）
--- The cache is created in IO so that every call really starts empty. With
--- `unsafePerformIO $ newIORef` GHC floated it out of the time-limit loop, and
--- one cache ended up shared by the whole run.
+-- The cache must be created in IO: made with `unsafePerformIO $ newIORef`,
+-- GHC is free to share one cache between all the calls.
 buildNeuralWani :: Device -> Params -> WordMap -> Bool -> Maybe Int -> DelimiterToken 
                 -> IO (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
 buildNeuralWani device model wordMap biDirectional topK delimiterToken = do
@@ -782,15 +781,12 @@ takeReuseOption ("--reuse":d:rest) = let (m, r) = takeReuseOption rest
 takeReuseOption (x:rest) = let (m, r) = takeReuseOption rest in (m, x:r)
 takeReuseOption [] = (Nothing, [])
 
--- | Pulls "--timelimits <ms,ms,...>" out of the argument list, so that an
--- interrupted run can be continued from the time limit it stopped at.
 takeTimeLimitsOption :: [String] -> (Maybe [Int], [String])
 takeTimeLimitsOption ("--timelimits":ts:rest) = let (m, r) = takeTimeLimitsOption rest
                                                in (maybe (Just (map read (List.splitOn "," ts))) Just m, r)
 takeTimeLimitsOption (x:rest) = let (m, r) = takeTimeLimitsOption rest in (m, x:r)
 takeTimeLimitsOption [] = (Nothing, [])
 
--- | How long a NeuralWani prediction cache lives.
 data CacheScope = CachePerProblem | CachePerTimeLimit
   deriving (Eq)
 
@@ -798,7 +794,6 @@ showCacheScope :: CacheScope -> String
 showCacheScope CachePerProblem   = "problem"
 showCacheScope CachePerTimeLimit = "timelimit"
 
--- | Pulls "--cachescope <problem|timelimit>" out of the argument list.
 takeCacheScopeOption :: [String] -> (Maybe CacheScope, [String])
 takeCacheScopeOption ("--cachescope":c:rest) = let (m, r) = takeCacheScopeOption rest
                                               in (maybe (Just (parse c)) Just m, r)
@@ -808,8 +803,6 @@ takeCacheScopeOption ("--cachescope":c:rest) = let (m, r) = takeCacheScopeOption
 takeCacheScopeOption (x:rest) = let (m, r) = takeCacheScopeOption rest in (m, x:r)
 takeCacheScopeOption [] = (Nothing, [])
 
--- | Pulls "--problems <jsemId,jsemId,...>" out of the argument list, so that a
--- few test cases can be evaluated without waiting for all of them.
 takeProblemsOption :: [String] -> (Maybe [String], [String])
 takeProblemsOption ("--problems":ps:rest) = let (m, r) = takeProblemsOption rest
                                            in (maybe (Just (List.splitOn "," ps)) Just m, r)

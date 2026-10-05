@@ -239,12 +239,11 @@ deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arr
                         then 
                           (deduceWithSubGoalset subgoalset depth setting{WB.sStatus = WB.mergeStatus (WB.rStatus rs) WB.statusDef{WB.allProof = True}} resultDef)
                             >>= \result -> return $ WB.mergeResult rs result
-                        else return rs -- `rsIO` would run every subgoalset searched so far again
+                        else return rs
                 )
                 (return resultDef)
                 subgoalsets
-    in -- Run `resultIO'` once: binding it twice would search all the subgoalsets twice.
-      resultIO' >>= \result' ->
+    in resultIO' >>= \result' ->
         let trees =
               filter
               (\tree ->

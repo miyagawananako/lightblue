@@ -38,7 +38,6 @@ REUSE_RUNS=(
 
 mkdir -p logs
 
-# run <log name> <jsem-train-eval-exe args...>
 run() {
   local LOG="logs/$1_$(date +%Y-%m-%d_%H-%M-%S).log"
   LAST_LOG="$LOG"
@@ -92,7 +91,6 @@ for entry in "${REUSE_RUNS[@]}"; do
       "$DATA" "$BI" "$EMB" "$EMB" "$LAYERS" $COMMON
 done
 
-# 1周目で学習したモデルを使う（学習に失敗していれば飛ばす）
 for LAYERS in 1 2; do
   DIR=$(ls -td "$R"/jsem_biTrue_s32_lr5.0e-4_i512_h512_layer${LAYERS}/*/topk_nothing_cache-problem 2>/dev/null | head -1)
   if [ -n "$DIR" ] && [ -f "$DIR/seq-class.model" ]; then
@@ -110,7 +108,6 @@ for entry in "${REUSE_RUNS[@]}"; do
       "$DATA" "$BI" "$EMB" "$EMB" "$LAYERS" $COMMON
 done
 
-# 1周目で学習したモデルを使う（学習に失敗していれば飛ばす）
 for LAYERS in 1 2; do
   DIR=$(ls -td "$R"/jsem_biTrue_s32_lr5.0e-4_i512_h512_layer${LAYERS}/*/topk_nothing_cache-problem 2>/dev/null | head -1)
   if [ -n "$DIR" ] && [ -f "$DIR/seq-class.model" ]; then
