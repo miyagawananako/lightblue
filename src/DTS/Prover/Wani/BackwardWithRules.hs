@@ -239,19 +239,21 @@ deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arr
                         then 
                           (deduceWithSubGoalset subgoalset depth setting{WB.sStatus = WB.mergeStatus (WB.rStatus rs) WB.statusDef{WB.allProof = True}} resultDef)
                             >>= \result -> return $ WB.mergeResult rs result
-                        else rsIO
+                        else return rs -- `rsIO` would run every subgoalset searched so far again
                 )
                 (return resultDef)
                 subgoalsets
-        treeIO = resultIO' >>= \result' -> return $
-                  filter 
-                  (\tree -> 
-                      let A.AJudgment sig' var' term' type' = A.downSide' tree 
-                      in -- `arrowNotat` and `betaReduece` are performed uniformly here. Even if normalization is not considered when creating a rule, the following ensures that the comparison is valid.
-                          (maybe True (\term -> (A.arrowNotat . A.betaReduce) term' == (A.arrowNotat . A.betaReduce) term) justTerm) && ((A.arrowNotat . A.betaReduce) type' == (A.arrowNotat . A.betaReduce) arrowType)
-                  ) $
-                  L.nub$ WB.trees result'
-    in treeIO >>= \trees -> resultIO' >>= \result' -> return $ result'{WB.rStatus = (WB.rStatus result'){WB.deduceNgLst = WB.deduceNgLst$WB.sStatus setting}}{WB.trees = trees}
+    in -- Run `resultIO'` once: binding it twice would search all the subgoalsets twice.
+      resultIO' >>= \result' ->
+        let trees =
+              filter
+              (\tree ->
+                  let A.AJudgment sig' var' term' type' = A.downSide' tree
+                  in -- `arrowNotat` and `betaReduece` are performed uniformly here. Even if normalization is not considered when creating a rule, the following ensures that the comparison is valid.
+                      (maybe True (\term -> (A.arrowNotat . A.betaReduce) term' == (A.arrowNotat . A.betaReduce) term) justTerm) && ((A.arrowNotat . A.betaReduce) type' == (A.arrowNotat . A.betaReduce) arrowType)
+              ) $
+              L.nub$ WB.trees result'
+        in return $ result'{WB.rStatus = (WB.rStatus result'){WB.deduceNgLst = WB.deduceNgLst$WB.sStatus setting}}{WB.trees = trees}
 
 deduceWithSubGoalsetsConcurrent :: [WB.SubGoalSet] -> WB.Depth -> WB.Setting -> WB.Result -> M.Maybe A.Arrowterm -> A.Arrowterm -> IO WB.Result
 deduceWithSubGoalsetsConcurrent subgoalsets depth setting resultDef justTerm arrowType = 
