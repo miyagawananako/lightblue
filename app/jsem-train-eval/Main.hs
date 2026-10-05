@@ -808,6 +808,14 @@ takeCacheScopeOption ("--cachescope":c:rest) = let (m, r) = takeCacheScopeOption
 takeCacheScopeOption (x:rest) = let (m, r) = takeCacheScopeOption rest in (m, x:r)
 takeCacheScopeOption [] = (Nothing, [])
 
+-- | Pulls "--problems <jsemId,jsemId,...>" out of the argument list, so that a
+-- few test cases can be evaluated without waiting for all of them.
+takeProblemsOption :: [String] -> (Maybe [String], [String])
+takeProblemsOption ("--problems":ps:rest) = let (m, r) = takeProblemsOption rest
+                                           in (maybe (Just (List.splitOn "," ps)) Just m, r)
+takeProblemsOption (x:rest) = let (m, r) = takeProblemsOption rest in (m, x:r)
+takeProblemsOption [] = (Nothing, [])
+
 main :: IO ()
 main = do
   -- Progress lines go to a log file in background runs; without line
@@ -816,7 +824,8 @@ main = do
   rawArgs <- getArgs
   let (reuseDir, args1) = takeReuseOption rawArgs
       (timeLimitsOpt, args2) = takeTimeLimitsOption args1
-      (cacheScopeOpt, args0) = takeCacheScopeOption args2
+      (cacheScopeOpt, args3) = takeCacheScopeOption args2
+      (problemsOpt, args0) = takeProblemsOption args3
       cacheScope = maybe CachePerTimeLimit id cacheScopeOpt
       timeLimits = maybe [30000, 60000, 90000] id timeLimitsOpt
       saveSearchLogs = "--searchlog" `elem` args0
@@ -904,6 +913,7 @@ main = do
           , "  --reuse <dir> : Evaluate the model, word map and test cases in <dir> instead of training"
           , "  --timelimits <ms,...> : Time limits to evaluate, comma separated (default: 30000,60000,90000)"
           , "  --cachescope <s>      : Lifetime of the NeuralWani prediction cache: problem or timelimit (default: timelimit)"
+          , "  --problems <id,...>   : Evaluate only these JSeM ids, keeping their test case numbers (default: all)"
           , "  --searchlog   : Write each search's events to eval_T*/searchLogs/*.jsonl (forces sequential search)"
           , "  --sequential  : Run wani sequentially (use this for timings comparable with --searchlog runs)"
           , "  --concurrent  : Run wani concurrently"
@@ -1039,6 +1049,7 @@ main = do
         , "  " ++ jstr "topK"          ++ ": " ++ jmaybe topK ++ ","
         , "  " ++ jstr "timeLimits"    ++ ": " ++ show timeLimits ++ ","
         , "  " ++ jstr "cacheScope"    ++ ": " ++ jstr (showCacheScope cacheScope) ++ ","
+        , "  " ++ jstr "problems"      ++ ": " ++ maybe "null" (\ps -> "[" ++ List.intercalate "," (map jstr ps) ++ "]") problemsOpt ++ ","
         , "  " ++ jstr "searchLog"     ++ ": " ++ (if saveSearchLogs then "true" else "false") ++ ","
         , "  " ++ jstr "concurrent"    ++ ": " ++ maybe "null" (\c -> if c then "true" else "false") concurrency ++ ","
         , "  " ++ jstr "runAt"         ++ ": " ++ jstr timeString
@@ -1164,10 +1175,13 @@ main = do
     createDirectoryIfMissing True newFolderPath
     createDirectoryIfMissing True evalOutputDir
     putStrLn $ "Prover config: maxDepth=" ++ show maxDepth ++ ", maxTime=" ++ show timeLimit
-    putStrLn $ "Running " ++ show (length testCases) ++ " test cases..."
+    -- Numbers stay those of the full list: whether Normal or NeuralWani runs
+    -- first depends on them, as do the output file names.
+    let selectedCases = filter (\(_, problem) -> maybe True (jspJsemId problem `elem`) problemsOpt) (zip [1..] testCases)
+    putStrLn $ "Running " ++ show (length selectedCases) ++ " test cases..."
     putStrLn ""
 
-    evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
+    evalResults <- forM selectedCases $ \(idx :: Int, problem) -> do
       putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
       let mSearchLogDir = if saveSearchLogs then Just (evalOutputDir </> "searchLogs") else Nothing
       neuralWaniFunc <- if cacheScope == CachePerProblem then newNeuralWani else return timeLimitNeuralWani
