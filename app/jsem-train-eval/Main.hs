@@ -39,6 +39,8 @@ import qualified Data.Set as Set
 import qualified Data.List as List
 import qualified Data.List.Split as List
 import System.Environment (getArgs)
+import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode(..))
 import System.IO (hSetBuffering, stdout, BufferMode(..))
 import System.Mem (performGC, performMajorGC)
 import Text.Printf (printf)
@@ -141,6 +143,7 @@ data ProverConfig = ProverConfig
   , cfgMaxTime      :: Int
   , cfgConcurrent   :: Maybe Bool  -- ^ Nothing: wani's default (concurrent unless logging)
   , cfgCacheScope   :: CacheScope
+  , cfgCode         :: CodeInfo
   }
 
 -- | 評価結果を格納するデータ型
@@ -581,6 +584,36 @@ printEvalSummary results = do
   putStrLn $ "Normal only success: " ++ show (length normalOnlySuccess)
 
 -- | 評価結果をファイルに保存
+data CodeInfo = CodeInfo
+  { codeBranch      :: String
+  , codeCommit      :: String
+  , codeSubject     :: String
+  , codeUncommitted :: Bool
+  }
+
+showCodeInfo :: CodeInfo -> String
+showCodeInfo c = codeBranch c ++ " @ " ++ codeCommit c ++ " \"" ++ codeSubject c ++ "\""
+  ++ (if codeUncommitted c then " + uncommitted changes" else "")
+
+-- The commit hash alone does not tell which prover a run measured, so the
+-- subject line is kept with it.
+readCodeInfo :: IO CodeInfo
+readCodeInfo = do
+  let git args = do
+        r <- try (readProcessWithExitCode "git" args "")
+        return $ case r of
+          Right (ExitSuccess, out, _) -> takeWhile (/= '\n') out
+          Right _ -> "unknown"
+          Left (_ :: SomeException) -> "unknown"
+  branch <- git ["rev-parse", "--abbrev-ref", "HEAD"]
+  commit <- git ["rev-parse", "--short", "HEAD"]
+  subject <- git ["log", "-1", "--format=%s"]
+  r <- try (readProcessWithExitCode "git" ["status", "--porcelain", "--untracked-files=no"] "")
+  let uncommitted = case r of
+        Right (ExitSuccess, out, _) -> not (null out)
+        _ -> True
+  return CodeInfo { codeBranch = branch, codeCommit = commit, codeSubject = subject, codeUncommitted = uncommitted }
+
 saveProofSearchReport :: FilePath -> ProverConfig -> [ProofSearchEvalResult] -> IO ()
 saveProofSearchReport outputDir config results = do
   let reportFile = outputDir </> "proof-search-eval-report.txt"
@@ -606,6 +639,8 @@ saveProofSearchReport outputDir config results = do
         , "  maxTime: " ++ show (cfgMaxTime config)
         , "  concurrent: " ++ maybe "default" show (cfgConcurrent config)
         , "  cacheScope: " ++ showCacheScope (cfgCacheScope config)
+        , "  allProofAtRoot: " ++ show (WB.allProof WB.statusDef)
+        , "  code: " ++ showCodeInfo (cfgCode config)
         , ""
         , "Results:"
         , "  Total tests: " ++ show totalTests
@@ -749,6 +784,8 @@ generateTexContentJSeM config sessionId modelDir results = TL.unlines
   , "\\item maxDepth: " <> TL.pack (show (cfgMaxDepth config))
   , "\\item maxTime: " <> TL.pack (show (cfgMaxTime config)) <> " ms"
   , "\\item cacheScope: " <> TL.pack (showCacheScope (cfgCacheScope config))
+  , "\\item allProofAtRoot: " <> TL.pack (show (WB.allProof WB.statusDef))
+  , "\\item code: \\texttt{" <> escapeTeX (TL.pack (showCodeInfo (cfgCode config))) <> "}"
   , "\\item Session ID: \\texttt{" <> escapeTeX (TL.pack sessionId) <> "}"
   , "\\item Output Directory: \\texttt{" <> escapeTeX (TL.pack modelDir) <> "}"
   , "\\end{itemize}"
@@ -1004,17 +1041,19 @@ main = do
       learningRate = toDevice device (asTensor (lr :: Float))
       numberOfBatch = steps
 
+  codeInfo <- readCodeInfo
   currentTime <- getZonedTime
   let timeString = Time.formatTime Time.defaultTimeLocale "%Y-%m-%d_%H-%M-%S" (zonedTimeToLocalTime currentTime)
       folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++
                    "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++
                    "_h" ++ show hiddenSize ++ "_layer" ++ show numOfLayers
       baseFolderPath = "jsemResults" </> folderName </> timeString
-      -- The cache scope is part of the name: runs before it existed shared one
-      -- cache across all time limits and are otherwise indistinguishable.
+      -- The cache scope and allProof are part of the name: they change what
+      -- is measured, and runs differing in them are otherwise indistinguishable.
+      allProofName = if WB.allProof WB.statusDef then "" else "_allproof-false"
       topKDirName = (case topK of
         Nothing -> "topk_nothing"
-        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope
+        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope ++ allProofName
       newFolderPath = baseFolderPath </> topKDirName
 
   createDirectoryIfMissing True newFolderPath
@@ -1023,7 +1062,8 @@ main = do
   -- Record what produced this directory. Without it the hyperparameters can
   -- only be guessed back from the directory name, which does not carry bias,
   -- epochs or threshold, and nothing records which model was evaluated.
-  let jstr s = "\"" ++ s ++ "\""
+  let jstr s = "\"" ++ concatMap (\c -> if c `elem` ['"', '\\'] then ['\\', c] else [c]) s ++ "\""
+      jbool b = if b then "true" else "false"
       jmaybe = maybe "null" show
       configJson = unlines
         [ "{"
@@ -1045,6 +1085,13 @@ main = do
         , "  " ++ jstr "problems"      ++ ": " ++ maybe "null" (\ps -> "[" ++ List.intercalate "," (map jstr ps) ++ "]") problemsOpt ++ ","
         , "  " ++ jstr "searchLog"     ++ ": " ++ (if saveSearchLogs then "true" else "false") ++ ","
         , "  " ++ jstr "concurrent"    ++ ": " ++ maybe "null" (\c -> if c then "true" else "false") concurrency ++ ","
+        , "  " ++ jstr "allProofAtRoot" ++ ": " ++ jbool (WB.allProof WB.statusDef) ++ ","
+        , "  " ++ jstr "code"          ++ ": {"
+        , "    " ++ jstr "branch"             ++ ": " ++ jstr (codeBranch codeInfo) ++ ","
+        , "    " ++ jstr "commit"             ++ ": " ++ jstr (codeCommit codeInfo) ++ ","
+        , "    " ++ jstr "commitSubject"      ++ ": " ++ jstr (codeSubject codeInfo) ++ ","
+        , "    " ++ jstr "uncommittedChanges" ++ ": " ++ jbool (codeUncommitted codeInfo)
+        , "  },"
         , "  " ++ jstr "runAt"         ++ ": " ++ jstr timeString
         , "}"
         ]
@@ -1162,6 +1209,7 @@ main = do
           , cfgMaxTime = timeLimit
           , cfgConcurrent = concurrency
           , cfgCacheScope = cacheScope
+          , cfgCode = codeInfo
           }
         evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
 
