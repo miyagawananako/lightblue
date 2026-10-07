@@ -1051,9 +1051,11 @@ main = do
       -- The cache scope and allProof are part of the name: they change what
       -- is measured, and runs differing in them are otherwise indistinguishable.
       allProofName = if WB.allProof WB.statusDef then "" else "_allproof-false"
+      -- Logging slows the search down, so these timings must not be read as measurements.
+      searchLogName = if saveSearchLogs then "_searchlog" else ""
       topKDirName = (case topK of
         Nothing -> "topk_nothing"
-        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope ++ allProofName
+        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope ++ allProofName ++ searchLogName
       newFolderPath = baseFolderPath </> topKDirName
 
   createDirectoryIfMissing True newFolderPath
