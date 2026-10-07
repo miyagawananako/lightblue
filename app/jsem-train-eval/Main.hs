@@ -611,7 +611,8 @@ readCodeInfo = do
   r <- try (readProcessWithExitCode "git" ["status", "--porcelain", "--untracked-files=no"] "")
   let uncommitted = case r of
         Right (ExitSuccess, out, _) -> not (null out)
-        _ -> True
+        Right _ -> True
+        Left (_ :: SomeException) -> True
   return CodeInfo { codeBranch = branch, codeCommit = commit, codeSubject = subject, codeUncommitted = uncommitted }
 
 saveProofSearchReport :: FilePath -> ProverConfig -> [ProofSearchEvalResult] -> IO ()
@@ -1064,7 +1065,8 @@ main = do
   -- Record what produced this directory. Without it the hyperparameters can
   -- only be guessed back from the directory name, which does not carry bias,
   -- epochs or threshold, and nothing records which model was evaluated.
-  let jstr s = "\"" ++ concatMap (\c -> if c `elem` ['"', '\\'] then ['\\', c] else [c]) s ++ "\""
+  let jstr :: String -> String
+      jstr s = "\"" ++ concatMap (\c -> if c `elem` ['"', '\\'] then ['\\', c] else [c]) s ++ "\""
       jbool b = if b then "true" else "false"
       jmaybe = maybe "null" show
       configJson = unlines
