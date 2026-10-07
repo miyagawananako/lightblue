@@ -1,0 +1,75 @@
+# ══════════════════════════════════════════════════════════════════════
+# lightblue + hasktorch ビルド環境
+#
+# NeuralWani は hasktorch に依存するため、libtorch (C++) と hasktorch の
+# ソースツリーが必要になる。それらを自前で用意する代わりに、hasktorch 公式が
+# 配布している htorch/hasktorch-jupyter イメージをベースにする。
+# (miyagawananako/neuralWani の Dockerfile と同じ方式)
+#
+# ベースイメージは amd64 のみ提供されているため、Apple Silicon では QEMU
+# エミュレーションで動作する。初回ビルドは相当に時間がかかる。
+#
+# ビルド (リポジトリから何も COPY しないので、2.4GB のコンテキストを
+# 転送しないよう標準入力から渡す):
+#   docker build --platform linux/amd64 -t lightblue-hasktorch - < Dockerfile.hasktorch
+#
+# 使い方 (compose.hasktorch.yml 経由を推奨):
+#   docker compose -f compose.hasktorch.yml run --rm lightblue stack build
+# ══════════════════════════════════════════════════════════════════════
+
+FROM --platform=linux/amd64 htorch/hasktorch-jupyter:latest-cpu
+
+# Stack を導入 (ベースイメージには cabal しか入っていない)
+RUN curl -sSL https://get.haskellstack.org/ | sh
+RUN stack upgrade && stack --version
+
+# ベースイメージは /home/ubuntu 直下に hasktorch を展開しているが、
+# lightblue の stack.yaml は /home/ubuntu/libraries/hasktorch を参照する。
+# neuralWani の Dockerfile と同じレイアウトに揃える。
+WORKDIR /home/ubuntu
+RUN mkdir -p libraries && mv ./hasktorch ./inline-c ./dist-newstyle ./libraries/
+
+# get-deps.sh は python / unzip / wget / git / sed / pip の存在を確認し、
+# 欠けていると即 exit する。ベースイメージ (Ubuntu 20.04) には python3 は
+# あるが python が無いので、python-is-python3 で補う。
+#
+# その前に NodeSource のリポジトリ定義を外す。2022年のイメージには
+# deb.nodesource.com/node_18.x が登録されているが、現在は配信が終了して
+# おり apt-get update が Release file 無しで失敗する (exit 100)。
+# lightblue のビルドに Node.js は不要なので削除してよい。
+RUN sudo rm -f /etc/apt/sources.list.d/nodesource.list \
+    && sudo apt-get update \
+    && sudo apt-get install -y --no-install-recommends python-is-python3 \
+    && sudo rm -rf /var/lib/apt/lists/*
+
+# ベースイメージには hasktorch の Haskell ソースしか入っておらず、
+# deps/ には取得スクリプトしかない。libtorch (C++) 本体はここで取得する。
+# stack-docker.yaml の extra-include-dirs / extra-lib-dirs が指す
+# deps/libtorch, deps/mklml, deps/libtokenizers がこれで用意される。
+# 参考: hasktorch/hasktorch の README (2022年版) の
+#   pushd deps; ./get-deps.sh; popd; source setenv
+# 引数なしのデフォルトは CPU 版 libtorch 1.11.0。
+WORKDIR /home/ubuntu/libraries/hasktorch/deps
+RUN ./get-deps.sh
+
+# setenv は LD_LIBRARY_PATH 等を設定するが、docker では
+# シェルを跨いで引き継がれないので ENV として焼いておく。
+# (ビルドには extra-lib-dirs で足りるが、実行時にはこちらが要る)
+ENV LD_LIBRARY_PATH=/home/ubuntu/libraries/hasktorch/deps/libtorch/lib:/home/ubuntu/libraries/hasktorch/deps/mklml/lib:/home/ubuntu/libraries/hasktorch/deps/libtokenizers/lib
+
+# stack.yaml の resolver (lts-20.26 = GHC 9.2.8) に対応する GHC を先に取得。
+# ここで焼いておくことで、コンテナ起動のたびにダウンロードせずに済む。
+# プロジェクトを COPY せずに済むよう --resolver で直接指定する
+# (ソースは compose.hasktorch.yml でマウントする)。
+RUN stack setup --resolver lts-20.26
+
+WORKDIR /home/ubuntu/lightblue
+
+# コンテナ内では常に Docker 用の設定を使う
+# (本体の stack.yaml は GPU サーバ向けのパスを指しているため)
+ENV STACK_YAML=/home/ubuntu/lightblue/stack-docker.yaml
+
+# LIGHTBLUE は末尾に "/" が必要 (fetchConfig が区切りなしで連結するため)
+ENV LIGHTBLUE=/home/ubuntu/lightblue/
+
+CMD ["bash"]

@@ -34,6 +34,7 @@ import qualified Interface.Text as T
 import qualified Interface.HTML as I
 import qualified Interface.PrintParseResult as PPR
 import qualified Interface.Express.Express as Express
+import qualified DTS.Prover.NeuralWani.Builder as NW
 import qualified JSeM as J
 import qualified JSeM.XML as J
 import qualified DTS.UDTTdeBruijn as UDTT
@@ -45,7 +46,7 @@ import qualified DTS.NaturalLanguageInference as NLI
 import qualified JSeM as JSeM                         --jsem
 import qualified ML.Exp.Classification.Bounded as NLP --nlp-tools
 
-data Options = Options Lang Command I.Style NLI.ProverName FilePath Int Int Int Int Int Int Bool Bool Bool Bool (Maybe Int) Bool Bool Bool (Maybe ExpressBrowser) (Maybe LexicalPos)
+data Options = Options Lang Command I.Style NLI.ProverName FilePath Int Int Int Int Int Int Bool Bool Bool Bool (Maybe Int) Bool Bool Bool (Maybe ExpressBrowser) (Maybe LexicalPos) Bool
 
 data Command =
   Parse I.ParseOutput
@@ -254,6 +255,9 @@ optionParser =
       ( long "lexicalPos"
       <> metavar "top|bottom|none"
       <> help "Set Lexical Items position in Express view" ))
+    <*> switch
+      ( long "neuralwani"
+      <> help "If True, use NeuralWani to reorder rules in Express proof search (loads a trained model)" )
 
 parseOptionParser :: Parser Command
 parseOptionParser = Parse
@@ -295,7 +299,7 @@ main = customExecParser p opts >>= lightblueMain
         p = prefs showHelpOnEmpty
 
 lightblueMain :: Options -> IO ()
-lightblueMain (Options lang commands style proverName filepath beamW nParse nTypeCheck nProof maxDepth maxTime noTypeCheck noInference ifTime verbose mDepth noShowCat noShowSem leafVertical mExpressBrowser mLexPos) = do
+lightblueMain (Options lang commands style proverName filepath beamW nParse nTypeCheck nProof maxDepth maxTime noTypeCheck noInference ifTime verbose mDepth noShowCat noShowSem leafVertical mExpressBrowser mLexPos useNeuralWani) = do
   start <- Time.getCurrentTime
   langOptions <- case lang of
                    JP morphaName filterName -> do
@@ -377,6 +381,12 @@ lightblueMain (Options lang commands style proverName filepath beamW nParse nTyp
             QT.maxTime = Just maxTime
             }
       case style of
+        -- Express の証明探索可視化は wani を前提とする（pos 側はログ付き
+        -- wani を直接呼ぶため、他の prover を指定されると pos/neg で
+        -- 異なる prover が走ってしまう）
+        I.EXPRESS | proverName /= NLI.Wani ->
+          S.hPutStrLn S.stderr $
+            "Express (-s express) requires the Wani prover: rerun with --prover Wani (got " ++ show proverName ++ ")"
         I.EXPRESS -> do
           case parsedJSeM'' of
             [] -> do
@@ -390,13 +400,28 @@ lightblueMain (Options lang commands style proverName filepath beamW nParse nTyp
               Env.setEnv "LB_EXPRESS_NOSHOWCAT" (if noShowCat then "1" else "0")
               Env.setEnv "LB_EXPRESS_NOSHOWSEM" (if noShowSem then "1" else "0")
               Env.setEnv "LB_EXPRESS_LEAFVERTICAL" (if leafVertical then "1" else "0")
-              Env.setEnv "LB_EXPRESS_START" "inference"
+              -- LB_EXPRESS_START は既に設定されていれば尊重する
+              -- （Dockerfile.demo が searchlog を指定して直接可視化ページに
+              -- 着地させるため）。未設定なら inference から開始。
+              mStartEnv <- Env.lookupEnv "LB_EXPRESS_START"
+              case mStartEnv of
+                Just "searchlog" -> return ()
+                _ -> Env.setEnv "LB_EXPRESS_START" "inference"
               -- Browser selection for Express
               case mExpressBrowser of
                 Just BrowserChrome  -> Env.setEnv "LB_EXPRESS_BROWSER" "chrome"
                 Just BrowserFirefox -> Env.setEnv "LB_EXPRESS_BROWSER" "firefox"
                 Just BrowserDefault -> Env.setEnv "LB_EXPRESS_BROWSER" "default"
                 Nothing             -> return ()
+              mNeuralWani <- if useNeuralWani
+                               then Just <$> NW.neuralWaniBuilder
+                               else return Nothing
+              -- ProofSearchSetting を Express に渡す
+              Express.setProofSearchSetting $ QT.defaultProofSearchSetting {
+                QT.maxDepth = Just maxDepth,
+                QT.maxTime = Just maxTime,
+                QT.neuralWani = mNeuralWani
+                }
               -- Express を起動
               Express.showExpressInference parseSetting prover [("dummy",DTT.Entity)] [] sentences
         _ -> do

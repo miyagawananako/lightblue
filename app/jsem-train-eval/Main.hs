@@ -18,10 +18,10 @@
 
 module Main (main) where
 
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, when)
 import Control.DeepSeq (rnf)
 import Data.Char (isAlphaNum)
-import Control.Exception (evaluate, try, SomeException)
+import Control.Exception (evaluate, try, bracket, SomeException)
 import System.Random.Shuffle (shuffleM)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
 import System.FilePath ((</>))
@@ -53,7 +53,11 @@ import qualified DTS.DTTdeBruijn as DTT
 import qualified DTS.Prover.Wani.BackwardRules as BR
 import qualified DTS.Prover.Wani.Prove as Prove
 import qualified DTS.Prover.Wani.WaniBase as WB
+import qualified DTS.Prover.Wani.SearchLog as SL
 import qualified DTS.DTTdeBruijn as DdB
+import qualified Data.Aeson as Aeson
+import Data.Aeson ((.=))
+import qualified Data.ByteString.Lazy as BL
 
 -- hasktorch関連のインポート
 import Torch.Tensor       (Tensor(..), asValue, asTensor, toDevice)
@@ -134,6 +138,7 @@ data ProofSearchEvalResult = ProofSearchEvalResult
 data ProverConfig = ProverConfig
   { cfgMaxDepth     :: Int
   , cfgMaxTime      :: Int
+  , cfgConcurrent   :: Maybe Bool  -- ^ Nothing: wani's default (concurrent unless logging)
   } deriving (Show)
 
 -- | 評価結果を格納するデータ型
@@ -356,16 +361,26 @@ saveEvaluationReport outputDir result labels = do
 -- 証明探索（評価）関連の関数
 -- ============================================
 
+-- | Runs an action with a search log that streams its events to
+-- <dir>/<name>.jsonl while the search goes on, so Express can later render
+-- the very search that was measured instead of re-running it. Building the
+-- tree, stats and flame graph here would need every event in memory at once,
+-- which a depth-9 search does not fit into; Express builds them on demand.
+withFileSearchLog :: FilePath -> String -> (SL.SearchLog -> IO a) -> IO a
+withFileSearchLog dir name act = do
+  createDirectoryIfMissing True dir
+  bracket (SL.newFileSearchLog (dir </> (name ++ ".jsonl"))) SL.closeSearchLog act
+
 -- | prove' を使って証明探索を実行し、最初の証明木を取得する
-runProveWithTree :: QT.ProofSearchSetting -> DTT.ProofSearchQuery
+runProveWithTree :: Maybe SL.SearchLog -> QT.ProofSearchSetting -> DTT.ProofSearchQuery
                  -> IO ([I.Tree QT.DTTrule DTT.Judgment], NominalDiffTime)
-runProveWithTree setting query = do
+runProveWithTree mLog setting query = do
   -- 計測に入る前に、クエリを完全評価してGCを実行（ウォームアップ/環境ノイズ除去）
   evaluate $ rnf query
   performMajorGC
   startTime <- getCurrentTime
-  
-  let prover = Prove.prove' setting
+
+  let prover = Prove.prove'WithLog mLog setting
   
   maybeTree <- ListT.head (prover query)
   let trees = case maybeTree of
@@ -436,10 +451,11 @@ buildNeuralWani device model wordMap biDirectional topK delimiterToken =
 evaluateOneProblem :: ProverConfig 
                    -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])  -- ^ NeuralWani関数
                    -> FilePath                                        -- ^ 出力ベースディレクトリ
+                   -> Maybe FilePath                                  -- ^ 探索ログの保存先（Nothing なら記録しない）
                    -> Int                                             -- ^ テストケース番号
                    -> JSeMProblemData
                    -> IO (Maybe ProofSearchEvalResult)
-evaluateOneProblem config neuralWaniFunc outputBaseDir idx problem = 
+evaluateOneProblem config neuralWaniFunc outputBaseDir searchLogDir idx problem =
   case jspInferenceQuery problem of
     Nothing -> return Nothing
     Just query -> do
@@ -449,37 +465,45 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir idx problem =
       -- Normal Proverの設定
       let normalSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
-                QT.maxTime = Just (cfgMaxTime config)
+                QT.maxTime = Just (cfgMaxTime config),
+                QT.concurrent = cfgConcurrent config
                 }
       
       -- NeuralWani Proverの設定
       let neuralSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
                 QT.maxTime = Just (cfgMaxTime config),
-                QT.neuralWani = Just neuralWaniFunc
+                QT.neuralWani = Just neuralWaniFunc,
+                QT.concurrent = cfgConcurrent config
                 }
       
       -- 実行順序を交互にする（偶数番目と奇数番目で入れ替え）
       -- これにより、ウォームアップやキャッシュの影響を両者で均等にする
       -- 注: runProveWithTree内で計測直前にGCが実行されるため、ここでは不要
-      (normalTrees, normalTime, neuralTrees, neuralTime) <- 
+      -- 出力用ベース名の作成（インデックス + JSeM ID をサニタイズ）
+      let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem)) :: String
+
+      -- Logging is opt-in: it forces the search to run sequentially, so leaving
+      -- it on would silently change what the timings measure.
+      let withLog tag act = case searchLogDir of
+            Nothing -> act Nothing
+            Just dir -> withFileSearchLog dir (baseName ++ "_" ++ tag) (act . Just)
+
+      (normalTrees, normalTime, neuralTrees, neuralTime) <-
         if even idx
         then do
           -- 偶数: Normal → Neural
-          (nTrees, nTime) <- runProveWithTree normalSetting query
-          (nnTrees, nnTime) <- runProveWithTree neuralSetting query
+          (nTrees, nTime) <- withLog "normal" (\ml -> runProveWithTree ml normalSetting query)
+          (nnTrees, nnTime) <- withLog "neural" (\ml -> runProveWithTree ml neuralSetting query)
           return (nTrees, nTime, nnTrees, nnTime)
         else do
           -- 奇数: Neural → Normal
-          (nnTrees, nnTime) <- runProveWithTree neuralSetting query
-          (nTrees, nTime) <- runProveWithTree normalSetting query
+          (nnTrees, nnTime) <- withLog "neural" (\ml -> runProveWithTree ml neuralSetting query)
+          (nTrees, nTime) <- withLog "normal" (\ml -> runProveWithTree ml normalSetting query)
           return (nTrees, nTime, nnTrees, nnTime)
       
       let normalSuccess = not (null normalTrees)
           neuralSuccess = not (null neuralTrees)
-
-      -- 出力用ベース名の作成（インデックス + JSeM ID をサニタイズ）
-      let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem))
 
       -- クエリを保存（解けなくても必ず保存）
       let queriesDir = outputBaseDir </> "queries"
@@ -576,6 +600,7 @@ saveProofSearchReport outputDir config results = do
         , "Configuration:"
         , "  maxDepth: " ++ show (cfgMaxDepth config)
         , "  maxTime: " ++ show (cfgMaxTime config)
+        , "  concurrent: " ++ maybe "default" show (cfgConcurrent config)
         , ""
         , "Results:"
         , "  Total tests: " ++ show totalTests
@@ -742,12 +767,36 @@ writeTexReportJSeM outputDir config sessionId results = do
 -- メイン関数
 -- ============================================
 
+-- | Pulls "--reuse <dir>" out of the argument list, leaving the positional
+-- arguments untouched so that existing scripts keep working.
+takeReuseOption :: [String] -> (Maybe FilePath, [String])
+takeReuseOption ("--reuse":d:rest) = let (m, r) = takeReuseOption rest
+                                     in (maybe (Just d) Just m, r)
+takeReuseOption (x:rest) = let (m, r) = takeReuseOption rest in (m, x:r)
+takeReuseOption [] = (Nothing, [])
+
 main :: IO ()
 main = do
-  args <- getArgs
-  
+  rawArgs <- getArgs
+  let (reuseDir, args0) = takeReuseOption rawArgs
+      saveSearchLogs = "--searchlog" `elem` args0
+      -- --sequential / --concurrent choose how wani runs independently of
+      -- logging, so timings can be taken sequentially without the cost of
+      -- writing a log. Neither given keeps wani's default.
+      concurrency
+        | "--sequential" `elem` args0 = Just False
+        | "--concurrent" `elem` args0 = Just True
+        | otherwise = Nothing
+      args = filter (`notElem` ["--searchlog", "--sequential", "--concurrent"]) args0
+
+  when ("--sequential" `elem` args0 && "--concurrent" `elem` args0) $
+    error "--sequential and --concurrent cannot be given together"
+  -- A search log forces sequential execution, so --concurrent would be ignored.
+  when (saveSearchLogs && concurrency == Just True) $
+    error "--searchlog runs the search sequentially; it cannot be combined with --concurrent"
+
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
+  -- Usage: jsem-train-eval-exe [--reuse <dir>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
   let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold, topK) = case args of
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
           ( a0                    -- JSeMProblemDataファイルパス
@@ -792,7 +841,7 @@ main = do
           , Just (read a11 :: Int) -- topK (optional)
           )
         _ -> error $ unlines
-          [ "Usage: jsem-train-eval-exe jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
+          [ "Usage: jsem-train-eval-exe [--reuse <dir>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
           , ""
           , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9"
           , "Example (with topK and threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000 5"
@@ -810,6 +859,12 @@ main = do
           , "  maxDepth      : Int    - Max proof search depth"
           , "  threshold     : Int    - Optional cap per label for training (omit for no cap)"
           , "  topK          : Int    - Number of top rules to consider"
+          , ""
+          , "Options:"
+          , "  --reuse <dir> : Evaluate the model, word map and test cases in <dir> instead of training"
+          , "  --searchlog   : Write each search's events to eval_T*/searchLogs/*.jsonl (forces sequential search)"
+          , "  --sequential  : Run wani sequentially (use this for timings comparable with --searchlog runs)"
+          , "  --concurrent  : Run wani concurrently"
           ]
   
   putStrLn "=== JSeM Train & Evaluate ==="
@@ -889,11 +944,8 @@ main = do
   putStrLn $ "Test data (judgment-rule pairs): " ++ show (length testData)
   
   -- ============================================
-  -- Phase 3: モデルの学習
+  -- Model settings and output directory (needed by both paths)
   -- ============================================
-  putStrLn ""
-  putStrLn "=== Phase 3: Training Model ==="
-  
   let device = Device CUDA 0
       biDirectional = bi
       embDim = emb
@@ -906,63 +958,107 @@ main = do
       hyperParams = HypParams device biDirectional embDim hasBias projSize vocabSize numOfLayers hiddenSize numOfRules
       learningRate = toDevice device (asTensor (lr :: Float))
       numberOfBatch = steps
-  
-  putStrLn $ "HyperParams: " ++ show hyperParams
-  putStrLn $ "Learning rate: " ++ show lr
-  putStrLn $ "Batch size: " ++ show numberOfBatch
-  putStrLn $ "Epochs: " ++ show iter
-  
-  startTime <- Time.getCurrentTime
-  putStrLn $ "Training started at: " ++ show startTime
-  
-  (trainedModel, lossesPair, frequentWords') <- trainModel device hyperParams trainData validData biDirectional iter numberOfBatch learningRate frequentWords
-  
-  endTime <- Time.getCurrentTime
-  let trainingDuration = Time.diffUTCTime endTime startTime
-  putStrLn $ "Training finished at: " ++ show endTime
-  putStrLn $ "Total training time: " ++ show trainingDuration
-  
-  -- ============================================
-  -- Phase 4: モデルの保存
-  -- ============================================
-  putStrLn ""
-  putStrLn "=== Phase 4: Saving Model ==="
-  
+
   currentTime <- getZonedTime
   let timeString = Time.formatTime Time.defaultTimeLocale "%Y-%m-%d_%H-%M-%S" (zonedTimeToLocalTime currentTime)
-      folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++ 
-                   "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++ 
+      folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++
+                   "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++
                    "_h" ++ show hiddenSize ++ "_layer" ++ show numOfLayers
       baseFolderPath = "jsemResults" </> folderName </> timeString
       topKDirName = case topK of
         Nothing -> "topk_nothing"
         Just k -> "topk_" ++ show k
       newFolderPath = baseFolderPath </> topKDirName
-  
-  createDirectoryIfMissing True newFolderPath
-  
-  let modelFileName = newFolderPath </> "seq-class.model"
-      frequentWordsFileName = newFolderPath </> "frequentWords.bin"
-      graphFileName = newFolderPath </> "graph-seq-class.png"
-      (losses, validLosses) = unzip lossesPair
-      learningCurveTitle = "JSeM: bi=" ++ show biDirectional ++ " h=" ++ show hiddenSize
-  
-  saveParams trainedModel modelFileName
-  B.writeFile frequentWordsFileName (encode frequentWords')
-  drawLearningCurve graphFileName learningCurveTitle [("training", reverse losses), ("validation", reverse validLosses)]
-  
-  putStrLn $ "Model saved to: " ++ modelFileName
-  putStrLn $ "FrequentWords saved to: " ++ frequentWordsFileName
-  putStrLn $ "Learning curve saved to: " ++ graphFileName
 
-  -- 以降の成果物保存場所の案内
-  putStrLn $ "Proof trees will be saved under: " ++ (newFolderPath </> "proofTrees")
-  putStrLn $ "Queries will be saved under:     " ++ (newFolderPath </> "queries")
-  
-  -- テストデータに対する予測評価（分類精度）
-  evalResult <- evaluateModel device trainedModel testData biDirectional
-  saveEvaluationReport newFolderPath evalResult allLabels
-  putStrLn $ "Classification Accuracy: " ++ show (erAccuracy evalResult)
+  createDirectoryIfMissing True newFolderPath
+
+
+  -- Record what produced this directory. Without it the hyperparameters can
+  -- only be guessed back from the directory name, which does not carry bias,
+  -- epochs or threshold, and nothing records which model was evaluated.
+  let jstr s = "\"" ++ s ++ "\""
+      jmaybe = maybe "null" show
+      configJson = unlines
+        [ "{"
+        , "  " ++ jstr "reusedModel"   ++ ": " ++ maybe "null" jstr reuseDir ++ ","
+        , "  " ++ jstr "jsemDataPath"  ++ ": " ++ jstr jsemDataPath ++ ","
+        , "  " ++ jstr "biDirectional" ++ ": " ++ (if bi then "true" else "false") ++ ","
+        , "  " ++ jstr "embDim"        ++ ": " ++ show emb ++ ","
+        , "  " ++ jstr "hiddenSize"    ++ ": " ++ show h ++ ","
+        , "  " ++ jstr "layers"        ++ ": " ++ show l ++ ","
+        , "  " ++ jstr "bias"          ++ ": " ++ (if bias then "true" else "false") ++ ","
+        , "  " ++ jstr "lr"            ++ ": " ++ show lr ++ ","
+        , "  " ++ jstr "batchSize"     ++ ": " ++ show steps ++ ","
+        , "  " ++ jstr "epochs"        ++ ": " ++ show iter ++ ","
+        , "  " ++ jstr "maxDepth"      ++ ": " ++ show maxDepth ++ ","
+        , "  " ++ jstr "threshold"     ++ ": " ++ jmaybe threshold ++ ","
+        , "  " ++ jstr "topK"          ++ ": " ++ jmaybe topK ++ ","
+        , "  " ++ jstr "searchLog"     ++ ": " ++ (if saveSearchLogs then "true" else "false") ++ ","
+        , "  " ++ jstr "concurrent"    ++ ": " ++ maybe "null" (\c -> if c then "true" else "false") concurrency ++ ","
+        , "  " ++ jstr "runAt"         ++ ": " ++ jstr timeString
+        , "}"
+        ]
+  writeFile (newFolderPath </> "config.json") configJson
+  putStrLn $ "Run config saved to: " ++ (newFolderPath </> "config.json")
+  -- With --reuse the model is taken from an earlier run, so training and
+  -- saving are skipped and only the proof search evaluation is redone.
+  (modelFileName, frequentWordsFileName) <- case reuseDir of
+    Just d -> do
+      putStrLn ""
+      putStrLn "=== Phase 3-4: Skipped (reusing an existing model) ==="
+      putStrLn $ "Reusing model from: " ++ d
+      return (d </> "seq-class.model", d </> "frequentWords.bin")
+    Nothing -> do
+      -- ============================================
+      -- Phase 3: Training the model
+      -- ============================================
+      putStrLn ""
+      putStrLn "=== Phase 3: Training Model ==="
+
+      putStrLn $ "HyperParams: " ++ show hyperParams
+      putStrLn $ "Learning rate: " ++ show lr
+      putStrLn $ "Batch size: " ++ show numberOfBatch
+      putStrLn $ "Epochs: " ++ show iter
+
+      startTime <- Time.getCurrentTime
+      putStrLn $ "Training started at: " ++ show startTime
+
+      (trainedModel, lossesPair, frequentWords') <- trainModel device hyperParams trainData validData biDirectional iter numberOfBatch learningRate frequentWords
+
+      endTime <- Time.getCurrentTime
+      let trainingDuration = Time.diffUTCTime endTime startTime
+      putStrLn $ "Training finished at: " ++ show endTime
+      putStrLn $ "Total training time: " ++ show trainingDuration
+      -- ============================================
+      -- Phase 4: モデルの保存
+      -- ============================================
+      putStrLn ""
+      putStrLn "=== Phase 4: Saving Model ==="
+
+
+      let modelFileName = newFolderPath </> "seq-class.model"
+          frequentWordsFileName = newFolderPath </> "frequentWords.bin"
+          graphFileName = newFolderPath </> "graph-seq-class.png"
+          (losses, validLosses) = unzip lossesPair
+          learningCurveTitle = "JSeM: bi=" ++ show biDirectional ++ " h=" ++ show hiddenSize
+
+      saveParams trainedModel modelFileName
+      B.writeFile frequentWordsFileName (encode frequentWords')
+      drawLearningCurve graphFileName learningCurveTitle [("training", reverse losses), ("validation", reverse validLosses)]
+
+      putStrLn $ "Model saved to: " ++ modelFileName
+      putStrLn $ "FrequentWords saved to: " ++ frequentWordsFileName
+      putStrLn $ "Learning curve saved to: " ++ graphFileName
+
+      -- 以降の成果物保存場所の案内
+      putStrLn $ "Proof trees will be saved under: " ++ (newFolderPath </> "proofTrees")
+      putStrLn $ "Queries will be saved under:     " ++ (newFolderPath </> "queries")
+
+      -- テストデータに対する予測評価（分類精度）
+      evalResult <- evaluateModel device trainedModel testData biDirectional
+      saveEvaluationReport newFolderPath evalResult allLabels
+      putStrLn $ "Classification Accuracy: " ++ show (erAccuracy evalResult)
+      return (modelFileName, frequentWordsFileName)
   
   -- ============================================
   -- Phase 5: 証明探索による速度評価（時間制限 30000/60000/90000 を試す）
@@ -983,8 +1079,20 @@ main = do
 
   -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
   let maxTestCases = 50  -- 最大テストケース数
-      testCases = take maxTestCases proofSearchTestProblems
       timeLimits = [30000, 60000, 90000]
+
+  -- Reuse the very test cases of the run being reused, otherwise the
+  -- freshly shuffled split would not be comparable with it.
+  testCases <- case reuseDir of
+    Nothing -> return $ take maxTestCases proofSearchTestProblems
+    Just d -> do
+      let f = d </> "testCases.bin"
+      e <- decode <$> B.readFile f
+      case e of
+        Left err -> error $ "Failed to decode " ++ f ++ ": " ++ show err
+        Right tcs -> do
+          putStrLn $ "Test cases loaded from: " ++ f
+          return tcs
 
   let testCasesFileName = newFolderPath </> "testCases.bin"
   B.writeFile testCasesFileName (encode testCases)
@@ -1001,6 +1109,7 @@ main = do
     let proverConfig = ProverConfig
           { cfgMaxDepth = maxDepth
           , cfgMaxTime = timeLimit
+          , cfgConcurrent = concurrency
           }
         evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
 
@@ -1012,7 +1121,8 @@ main = do
 
     evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
       putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
-      result <- try $ evaluateOneProblem proverConfig neuralWaniFunc evalOutputDir idx problem
+      let mSearchLogDir = if saveSearchLogs then Just (evalOutputDir </> "searchLogs") else Nothing
+      result <- try $ evaluateOneProblem proverConfig neuralWaniFunc evalOutputDir mSearchLogDir idx problem
       case result of
         Right (Just r) -> do
           putStrLn $ "Normal: " ++ TL.unpack (formatTimeNominal (pseNormalTime r)) ++
