@@ -229,6 +229,23 @@ deduceWithSubGoalsets subgoalsets depth setting resultDef justTerm arrowType =
     then deduceWithSubGoalsetsConcurrent subgoalsets depth setting resultDef justTerm arrowType
     else deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arrowType
 
+-- | Whether the subgoals of `subgoalset` must collect all their proofs.
+-- Stopping them at their first proved rule loses nothing only when no subgoal
+-- takes another's proof term (SubstLst, clues), the conclusion's type does
+-- not take them either, and the goal itself needs a single proof of any term.
+childrenNeedAllProofs :: WB.Setting -> M.Maybe A.Arrowterm -> WB.SubGoalSet -> Bool
+childrenNeedAllProofs setting justTerm (WB.SubGoalSet _ _ subgoals (dSide, dSideSubstLst)) =
+  not (WB.cutoffIndependent setting
+       && not (WB.allProof (WB.sStatus setting))
+       && M.isNothing justTerm
+       && all independent subgoals
+       && all (\(WB.SubstSet _ placeholder _) -> A.arrowSubst conclusion probe placeholder == conclusion) dSideSubstLst)
+  where
+    independent (WB.SubGoal _ substLst (clueWithArgs, clueWithResult)) =
+      null substLst && maybe True (null . snd) clueWithArgs && M.isNothing clueWithResult
+    conclusion = A.typefromAJudgment dSide
+    probe = A.aCon "cutoffIndependentProbe"
+
 deduceWithSubGoalsetsSequential :: [WB.SubGoalSet] -> WB.Depth -> WB.Setting -> WB.Result -> M.Maybe A.Arrowterm -> A.Arrowterm -> IO WB.Result
 deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arrowType = 
     (foldl
@@ -236,7 +253,7 @@ deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arr
           rsIO >>= \rs ->
             if (WB.allProof (WB.sStatus setting)) || (null $ WB.trees rs)
                 then 
-                  (deduceWithSubGoalset subgoalset depth setting{WB.sStatus = WB.mergeStatus (WB.rStatus rs) WB.statusDef{WB.allProof = True}} resultDef)
+                  (deduceWithSubGoalset subgoalset depth setting{WB.sStatus = (WB.mergeStatus (WB.rStatus rs) WB.statusDef){WB.allProof = childrenNeedAllProofs setting justTerm subgoalset}} resultDef)
                     >>= \result -> return $ WB.mergeResult rs result
                 else return rs
         )
@@ -251,7 +268,7 @@ deduceWithSubGoalsetsConcurrent subgoalsets depth setting resultDef justTerm arr
 
     let worker subgoalset = readIORef stopRef >>= \stop ->
           if (stop && (not $ WB.allProof (WB.sStatus setting))) then pure () else
-              readIORef resultRef >>= \current ->  (deduceWithSubGoalset subgoalset depth setting{WB.sStatus = WB.mergeStatus (WB.rStatus current) WB.statusDef{WB.allProof = True}} resultDef)
+              readIORef resultRef >>= \current ->  (deduceWithSubGoalset subgoalset depth setting{WB.sStatus = (WB.mergeStatus (WB.rStatus current) WB.statusDef){WB.allProof = childrenNeedAllProofs setting justTerm subgoalset}} resultDef)
                 >>= \result ->
                   atomicModifyIORef' resultRef (\rs ->
                     let merged = WB.mergeResult rs result
@@ -292,7 +309,7 @@ deduceWithSubGoalsetsConcurrent subgoalsets depth setting resultDef justTerm arr
 deduce':: WB.Goal -> WB.Depth -> WB.Setting -> IO WB.Result
 deduce' goal depth setting =
   let mLog = WB.searchLog setting
-  in recordGoalStart mLog EvGoalStart depth goalStr (WB.searchLogRuleName setting) "current goal" (WB.searchLogSubgoalIndex setting) (WB.searchLogParentGoalId setting) (WB.searchLogSubgoalSetId setting) >>= \gid ->
+  in recordGoalStart mLog EvGoalStart depth goalStr (WB.searchLogRuleName setting) (if WB.allProof (WB.sStatus setting) then "current goal" else "current goal (stops at first proved rule)") (WB.searchLogSubgoalIndex setting) (WB.searchLogParentGoalId setting) (WB.searchLogSubgoalSetId setting) >>= \gid ->
   let endGoal msg = recordGoalEnd mLog gid depth goalStr msg
       logForGoal = recordEventForGoal mLog gid
   in
