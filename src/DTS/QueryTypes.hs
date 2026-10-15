@@ -8,6 +8,7 @@ module DTS.QueryTypes (
   , TypeChecker
   , TypeInferer
   , LogicSystem(..)
+  , Cutoff(..)
   , ProofSearchSetting(..)
   , defaultProofSearchSetting
   , ProverBuilder
@@ -82,6 +83,10 @@ type TypeInferer = Prover -> Bool -> UDTTdB.TypeInferQuery -> ListT IO DTTProofD
 
 data LogicSystem = Intuitionistic | Classical deriving (Eq, Show)
 
+-- | Which goals besides the root stop at their first proved rule.
+-- CutoffIndependent decides per subgoalset, CutoffSubgoal per subgoal.
+data Cutoff = CutoffRoot | CutoffIndependent | CutoffSubgoal deriving (Eq, Show)
+
 data ProofSearchSetting = ProofSearchSetting {
   maxDepth :: Maybe Int
   , maxTime :: Maybe Int
@@ -93,11 +98,11 @@ data ProofSearchSetting = ProofSearchSetting {
   , oracle :: Maybe (DTTdB.ConName -> DTTdB.ConName -> Float) -- Default = Nothing
   , neuralWani :: Maybe (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel]) -- Default = Nothing
   , concurrent :: Maybe Bool -- Default = Nothing (wani: concurrent unless a search log is recorded)
-  , cutoffIndependent :: Bool -- Default = False
+  , cutoff :: Cutoff -- Default = CutoffRoot
   } -- deriving (Eq, Show)
 
 defaultProofSearchSetting :: ProofSearchSetting
-defaultProofSearchSetting = ProofSearchSetting Nothing Nothing (Just Intuitionistic) (-1) True False False Nothing Nothing Nothing False
+defaultProofSearchSetting = ProofSearchSetting Nothing Nothing (Just Intuitionistic) (-1) True False False Nothing Nothing Nothing CutoffRoot
 
 type Prover = DTTdB.ProofSearchQuery -> ListT IO DTTProofDiagram
 

@@ -97,7 +97,7 @@ prove'WithLog mLog QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) 
         -- overrides `concurrent`; without one, `concurrent` defaults to True.
         WB.enableConcurrent = M.isNothing mLog && M.fromMaybe True concurrent,
         WB.getPrioritizedRules = neuralWani,
-        WB.cutoffIndependent = cutoffIndependent,
+        WB.cutoff = cutoff,
         WB.searchLog = mLog,
         WB.searchLogRuleName = Nothing,
         WB.searchLogSubgoalIndex = Nothing,
