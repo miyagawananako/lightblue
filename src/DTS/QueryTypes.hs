@@ -84,7 +84,6 @@ type TypeInferer = Prover -> Bool -> UDTTdB.TypeInferQuery -> ListT IO DTTProofD
 data LogicSystem = Intuitionistic | Classical deriving (Eq, Show)
 
 -- | Which goals besides the root stop at their first proved rule.
--- CutoffIndependent decides per subgoalset, CutoffSubgoal per subgoal.
 data Cutoff = CutoffRoot | CutoffIndependent | CutoffSubgoal deriving (Eq, Show)
 
 data ProofSearchSetting = ProofSearchSetting {

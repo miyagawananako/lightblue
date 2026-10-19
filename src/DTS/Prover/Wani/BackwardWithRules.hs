@@ -232,12 +232,10 @@ deduceWithSubGoalsets subgoalsets depth setting resultDef justTerm arrowType =
     then deduceWithSubGoalsetsConcurrent subgoalsets depth setting resultDef justTerm arrowType
     else deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arrowType
 
--- | Whether the subgoals of `subgoalset` must collect all their proofs.
--- Stopping them at their first proved rule loses nothing only when no subgoal
--- takes another's proof term (SubstLst, clues), the conclusion's type does
--- not take them either, and the goal itself needs a single proof of any term.
--- Under CutoffSubgoal the goal's own need is passed on, and
--- `subgoalNeedsAllProofs` decides for each subgoal.
+-- Stopping the subgoals at their first proved rule loses nothing only when no
+-- subgoal takes another's proof term (SubstLst, clues), the conclusion's type
+-- does not take them either, and the goal itself needs a single proof of any
+-- term.
 childrenNeedAllProofs :: WB.Setting -> M.Maybe A.Arrowterm -> WB.SubGoalSet -> Bool
 childrenNeedAllProofs setting justTerm (WB.SubGoalSet _ _ subgoals (dSide, dSideSubstLst))
   | WB.cutoff setting == QT.CutoffSubgoal = WB.allProof (WB.sStatus setting)
@@ -253,10 +251,8 @@ childrenNeedAllProofs setting justTerm (WB.SubGoalSet _ _ subgoals (dSide, dSide
     conclusion = A.typefromAJudgment dSide
     probe = A.aCon "cutoffIndependentProbe"
 
--- | Whether the subgoal at `idx` must collect all its proofs.  Any one proof
--- serves when the goal needs a single proof and either the subgoal's term is
--- already fixed, or its proof term feeds no later subgoal, does not occur in
--- the conclusion's type, and need not match a fixed term of the goal.
+-- Under these conditions the choice of a proof changes neither a later
+-- subgoal nor the conclusion's type, so one proof serves.
 -- Substitution distances count leftwards: in a subgoal they are 0 for the
 -- subgoal just before it, in the conclusion 0 for the last subgoal.
 subgoalNeedsAllProofs :: WB.Setting -> M.Maybe A.Arrowterm -> [WB.SubGoal] -> (A.AJudgment, WB.SubstLst) -> Int -> WB.Goal -> Bool
