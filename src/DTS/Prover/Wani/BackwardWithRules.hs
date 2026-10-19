@@ -189,12 +189,10 @@ deduceWithSubGoalsets subgoalsets depth setting resultDef justTerm arrowType =
     then deduceWithSubGoalsetsConcurrent subgoalsets depth setting resultDef justTerm arrowType
     else deduceWithSubGoalsetsSequential subgoalsets depth setting resultDef justTerm arrowType
 
--- | Whether `tree` proves the goal: its type, and its term when the goal fixes
--- one, match the goal.  `arrowNotat` and `betaReduce` are performed uniformly
--- here, so a rule need not normalize what it builds.  A goal that stops at its
--- first proved subgoalset must test this, not mere candidates: a subgoalset can
--- yield only trees the goal rejects (e.g. piElim with a wrong argument), and
--- stopping on them would skip the subgoalsets that do prove it.
+-- `arrowNotat` and `betaReduce` are performed uniformly here, so a rule need
+-- not normalize what it builds.  A goal that needs a single proof must stop on
+-- this, not on any tree: a subgoalset may yield only trees of a wrong type
+-- (piElim with a wrong argument), and stopping on them skips the rest.
 provesGoal :: M.Maybe A.Arrowterm -> A.Arrowterm -> UDT.Tree QT.DTTrule A.AJudgment -> Bool
 provesGoal justTerm arrowType tree =
   let A.AJudgment _ _ term' type' = A.downSide' tree
