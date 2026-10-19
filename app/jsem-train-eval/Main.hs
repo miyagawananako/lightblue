@@ -144,6 +144,7 @@ data ProverConfig = ProverConfig
   , cfgConcurrent   :: Maybe Bool  -- ^ Nothing: wani's default (concurrent unless logging)
   , cfgCacheScope   :: CacheScope
   , cfgCode         :: CodeInfo
+  , cfgCutoff       :: QT.Cutoff
   }
 
 -- | 評価結果を格納するデータ型
@@ -473,7 +474,8 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir searchLogDir idx problem 
       let normalSetting = QT.defaultProofSearchSetting {
                 QT.maxDepth = Just (cfgMaxDepth config),
                 QT.maxTime = Just (cfgMaxTime config),
-                QT.concurrent = cfgConcurrent config
+                QT.concurrent = cfgConcurrent config,
+                QT.cutoff = cfgCutoff config
                 }
       
       -- NeuralWani Proverの設定
@@ -481,7 +483,8 @@ evaluateOneProblem config neuralWaniFunc outputBaseDir searchLogDir idx problem 
                 QT.maxDepth = Just (cfgMaxDepth config),
                 QT.maxTime = Just (cfgMaxTime config),
                 QT.neuralWani = Just neuralWaniFunc,
-                QT.concurrent = cfgConcurrent config
+                QT.concurrent = cfgConcurrent config,
+                QT.cutoff = cfgCutoff config
                 }
       
       -- 実行順序を交互にする（偶数番目と奇数番目で入れ替え）
@@ -641,6 +644,7 @@ saveProofSearchReport outputDir config results = do
         , "  concurrent: " ++ maybe "default" show (cfgConcurrent config)
         , "  cacheScope: " ++ showCacheScope (cfgCacheScope config)
         , "  allProofAtRoot: " ++ show (WB.allProof WB.statusDef)
+        , "  cutoff: " ++ showCutoff (cfgCutoff config)
         , "  code: " ++ showCodeInfo (cfgCode config)
         , ""
         , "Results:"
@@ -786,6 +790,7 @@ generateTexContentJSeM config sessionId modelDir results = TL.unlines
   , "\\item maxTime: " <> TL.pack (show (cfgMaxTime config)) <> " ms"
   , "\\item cacheScope: " <> TL.pack (showCacheScope (cfgCacheScope config))
   , "\\item allProofAtRoot: " <> TL.pack (show (WB.allProof WB.statusDef))
+  , "\\item cutoff: " <> TL.pack (showCutoff (cfgCutoff config))
   , "\\item code: \\texttt{" <> escapeTeX (TL.pack (showCodeInfo (cfgCode config))) <> "}"
   , "\\item Session ID: \\texttt{" <> escapeTeX (TL.pack sessionId) <> "}"
   , "\\item Output Directory: \\texttt{" <> escapeTeX (TL.pack modelDir) <> "}"
@@ -841,6 +846,21 @@ takeCacheScopeOption ("--cachescope":c:rest) = let (m, r) = takeCacheScopeOption
 takeCacheScopeOption (x:rest) = let (m, r) = takeCacheScopeOption rest in (m, x:r)
 takeCacheScopeOption [] = (Nothing, [])
 
+showCutoff :: QT.Cutoff -> String
+showCutoff QT.CutoffRoot        = "root"
+showCutoff QT.CutoffIndependent = "independent"
+showCutoff QT.CutoffSubgoal     = "subgoal"
+
+takeCutoffOption :: [String] -> (Maybe QT.Cutoff, [String])
+takeCutoffOption ("--cutoff":c:rest) = let (m, r) = takeCutoffOption rest
+                                      in (maybe (Just (parse c)) Just m, r)
+  where parse "root"        = QT.CutoffRoot
+        parse "independent" = QT.CutoffIndependent
+        parse "subgoal"     = QT.CutoffSubgoal
+        parse x = error $ "--cutoff must be root, independent or subgoal: " ++ x
+takeCutoffOption (x:rest) = let (m, r) = takeCutoffOption rest in (m, x:r)
+takeCutoffOption [] = (Nothing, [])
+
 takeProblemsOption :: [String] -> (Maybe [String], [String])
 takeProblemsOption ("--problems":ps:rest) = let (m, r) = takeProblemsOption rest
                                            in (maybe (Just (List.splitOn "," ps)) Just m, r)
@@ -856,7 +876,9 @@ main = do
   let (reuseDir, args1) = takeReuseOption rawArgs
       (timeLimitsOpt, args2) = takeTimeLimitsOption args1
       (cacheScopeOpt, args3) = takeCacheScopeOption args2
-      (problemsOpt, args0) = takeProblemsOption args3
+      (problemsOpt, args4) = takeProblemsOption args3
+      (cutoffOpt, args0) = takeCutoffOption args4
+      cutoff = maybe QT.CutoffRoot id cutoffOpt
       cacheScope = maybe CachePerTimeLimit id cacheScopeOpt
       timeLimits = maybe [30000, 60000, 90000] id timeLimitsOpt
       saveSearchLogs = "--searchlog" `elem` args0
@@ -876,7 +898,7 @@ main = do
     error "--searchlog runs the search sequentially; it cannot be combined with --concurrent"
 
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe [--reuse <dir>] [--timelimits <ms,...>] [--cachescope <problem|timelimit>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
+  -- Usage: jsem-train-eval-exe [--reuse <dir>] [--timelimits <ms,...>] [--cachescope <problem|timelimit>] [--cutoff <root|independent|subgoal>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
   let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold, topK) = case args of
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
           ( a0                    -- JSeMProblemDataファイルパス
@@ -921,7 +943,7 @@ main = do
           , Just (read a11 :: Int) -- topK (optional)
           )
         _ -> error $ unlines
-          [ "Usage: jsem-train-eval-exe [--reuse <dir>] [--timelimits <ms,...>] [--cachescope <problem|timelimit>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
+          [ "Usage: jsem-train-eval-exe [--reuse <dir>] [--timelimits <ms,...>] [--cachescope <problem|timelimit>] [--cutoff <root|independent|subgoal>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
           , ""
           , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9"
           , "Example (with topK and threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000 5"
@@ -945,6 +967,7 @@ main = do
           , "  --timelimits <ms,...> : Time limits to evaluate, comma separated (default: 30000,60000,90000)"
           , "  --cachescope <s>      : Lifetime of the NeuralWani prediction cache: problem or timelimit (default: timelimit)"
           , "  --problems <id,...>   : Evaluate only these JSeM ids, keeping their test case numbers (default: all)"
+          , "  --cutoff <c>          : Where wani stops at the first proved rule: root, also the subgoals of independent subgoalsets (independent), or also each subgoal whose proof nothing else uses (subgoal) (default: root)"
           , "  --searchlog   : Write each search's events to eval_T*/searchLogs/*.jsonl (forces sequential search)"
           , "  --sequential  : Run wani sequentially (use this for timings comparable with --searchlog runs)"
           , "  --concurrent  : Run wani concurrently"
@@ -1054,9 +1077,10 @@ main = do
       allProofName = if WB.allProof WB.statusDef then "" else "_allproof-false"
       -- Logging slows the search down, so these timings must not be read as measurements.
       searchLogName = if saveSearchLogs then "_searchlog" else ""
+      cutoffName = if cutoff == QT.CutoffRoot then "" else "_cutoff-" ++ showCutoff cutoff
       topKDirName = (case topK of
         Nothing -> "topk_nothing"
-        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope ++ allProofName ++ searchLogName
+        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope ++ allProofName ++ cutoffName ++ searchLogName
       newFolderPath = baseFolderPath </> topKDirName
 
   createDirectoryIfMissing True newFolderPath
@@ -1090,6 +1114,7 @@ main = do
         , "  " ++ jstr "searchLog"     ++ ": " ++ (if saveSearchLogs then "true" else "false") ++ ","
         , "  " ++ jstr "concurrent"    ++ ": " ++ maybe "null" (\c -> if c then "true" else "false") concurrency ++ ","
         , "  " ++ jstr "allProofAtRoot" ++ ": " ++ jbool (WB.allProof WB.statusDef) ++ ","
+        , "  " ++ jstr "cutoff"        ++ ": " ++ jstr (showCutoff cutoff) ++ ","
         , "  " ++ jstr "code"          ++ ": {"
         , "    " ++ jstr "branch"             ++ ": " ++ jstr (codeBranch codeInfo) ++ ","
         , "    " ++ jstr "commit"             ++ ": " ++ jstr (codeCommit codeInfo) ++ ","
@@ -1214,6 +1239,7 @@ main = do
           , cfgConcurrent = concurrency
           , cfgCacheScope = cacheScope
           , cfgCode = codeInfo
+          , cfgCutoff = cutoff
           }
         evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
 

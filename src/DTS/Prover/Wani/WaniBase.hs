@@ -99,6 +99,10 @@ data Setting = Setting
    enableEq :: Bool,
    enableConcurrent :: Bool,
    getPrioritizedRules :: M.Maybe (Goal -> [BR.RuleLabel] -> [BR.RuleLabel]),
+   -- | Subgoals whose proofs feed neither a later subgoal nor the
+   -- conclusion's type may stop at their first proved rule, as the root goal
+   -- does; any proof of them serves equally.
+   cutoff :: QT.Cutoff,
    searchLog :: Maybe SearchLog,
    searchLogRuleName :: Maybe T.Text,
    searchLogSubgoalIndex :: Maybe Int,  -- ^ index of subgoal within SubGoalSet (0-based)
@@ -119,6 +123,7 @@ instance Show Setting where
         ++ ", oracleThreshold = " ++ show (oracleThreshold s)
         ++ ", enableEq = " ++ show (enableEq s)
         ++ ", getPrioritizedRules = " ++ (if M.isJust (getPrioritizedRules s) then "Just <function>" else "Nothing")
+        ++ ", cutoff = " ++ show (cutoff s)
         ++ "}"
 
 instance Eq Setting where
@@ -152,7 +157,7 @@ statusDef :: Status
 statusDef = Status{failedlst=[],usedMaxDepth = 0,deduceNgLst=[],usedDisJoint=[],allProof = False}
 
 settingDef :: Setting
-settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,oracle=M.Nothing,oracleThreshold=0.5,enableEq=True,enableConcurrent=False,getPrioritizedRules = M.Nothing,searchLog=Nothing,searchLogRuleName=Nothing,searchLogSubgoalIndex=Nothing,searchLogParentGoalId=Nothing,searchLogSubgoalSetId=Nothing}
+settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,oracle=M.Nothing,oracleThreshold=0.5,enableEq=True,enableConcurrent=False,getPrioritizedRules = M.Nothing,cutoff = QT.CutoffRoot,searchLog=Nothing,searchLogRuleName=Nothing,searchLogSubgoalIndex=Nothing,searchLogParentGoalId=Nothing,searchLogSubgoalSetId=Nothing}
 
 resultDef :: Result
 resultDef = Result{trees = [],errMsg = "",rStatus = statusDef}
