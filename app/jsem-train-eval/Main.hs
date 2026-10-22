@@ -18,12 +18,14 @@
 
 module Main (main) where
 
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, unless, when)
 import Control.DeepSeq (rnf)
 import Data.Char (isAlphaNum)
 import Control.Exception (evaluate, try, SomeException)
 import System.Random.Shuffle (shuffleM)
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, listDirectory)
+import System.Process (readProcess)
+import System.Timeout (timeout)
 import System.FilePath ((</>))
 import qualified Data.Text.Lazy as TL     --text
 import qualified Data.Text.Lazy.IO as TL  --text
@@ -31,6 +33,7 @@ import Data.Time.LocalTime (getZonedTime, zonedTimeToLocalTime)
 import Data.Time.Clock (getCurrentTime, diffUTCTime, NominalDiffTime)
 import qualified Data.Time as Time
 import qualified Data.ByteString as B     --bytestring
+import qualified Data.ByteString.Char8 as BC
 import Data.Store (Store, encode, decode)
 import qualified GHC.Generics as G
 import Data.Ord (Down(..))
@@ -55,6 +58,8 @@ import qualified DTS.Prover.Wani.Prove as Prove
 import qualified DTS.Prover.Wani.WaniBase as WB
 import qualified DTS.Prover.Wani.SearchLog as SL
 import qualified DTS.DTTdeBruijn as DdB
+import qualified DTS.UDTTdeBruijn as UDTT
+import qualified DTS.TypeChecker as TC
 import qualified Data.Aeson as Aeson
 import Data.Aeson ((.=))
 import qualified Data.ByteString.Lazy as BL
@@ -788,9 +793,220 @@ takeReuseOption ("--reuse":d:rest) = let (m, r) = takeReuseOption rest
 takeReuseOption (x:rest) = let (m, r) = takeReuseOption rest in (m, x:r)
 takeReuseOption [] = (Nothing, [])
 
+-- ============================================
+-- --prove-all: plain Wani over every problem
+-- ============================================
+
+-- | 'I.Tree' has no Store instance, so proofs are saved in this shape.
+data ProofNode = ProofNode QT.DTTrule DTT.Judgment [ProofNode]
+  deriving (G.Generic, Store)
+
+toProofNode :: I.Tree QT.DTTrule DTT.Judgment -> ProofNode
+toProofNode t = ProofNode (I.ruleName t) (I.node t) (map toProofNode (I.daughters t))
+
+-- | Pre-order, the same order as extractJudgmentRules in collectTypeCheckTrees.
+proofNodePairs :: ProofNode -> [(DTT.Judgment, QT.DTTrule)]
+proofNodePairs (ProofNode r j ds) = (j, r) : concatMap proofNodePairs ds
+
+data ProveAllRecord = ProveAllRecord
+  { parJsemId    :: String
+  , parQuery     :: DTT.ProofSearchQuery
+  , parPosResult :: String               -- ^ OK / FAIL / TIMEOUT
+  , parPosTime   :: Double
+  , parNegResult :: Maybe String         -- ^ Nothing when the proposition was proved
+  , parNegTime   :: Maybe Double
+  , parPolarity  :: Maybe String         -- ^ "positive" or "negative" for the proof found
+  , parProof     :: Maybe ProofNode
+  , parTypeCheck :: String               -- ^ accepted / rejected / timeout / error / -
+  , parUnknown   :: [String]             -- ^ constants in the proof term missing from the signature
+  } deriving (G.Generic, Store)
+
+termConstants :: DTT.Preterm -> [DTT.ConName]
+termConstants t = case t of
+  DTT.Con c          -> [c]
+  DTT.Pi a b         -> go [a, b]
+  DTT.Lam m          -> go [m]
+  DTT.App m n        -> go [m, n]
+  DTT.Not m          -> go [m]
+  DTT.Sigma a b      -> go [a, b]
+  DTT.Pair m n       -> go [m, n]
+  DTT.Proj _ m       -> go [m]
+  DTT.Disj a b       -> go [a, b]
+  DTT.Iota _ m       -> go [m]
+  DTT.Unpack p l m n -> go [p, l, m, n]
+  DTT.Succ n         -> go [n]
+  DTT.Natrec p n e f -> go [p, n, e, f]
+  DTT.Eq a m n       -> go [a, m, n]
+  DTT.Refl a m       -> go [a, m]
+  DTT.Idpeel p e r   -> go [p, e, r]
+  _                  -> []
+  where go = concatMap termConstants
+
+-- | The type checker throws its failure messages away (list-t's fail), so
+-- only the outcome is reported; callers record the unknown constants instead.
+typeCheckProof :: DTT.ProofSearchQuery -> DTT.Preterm -> IO String
+typeCheckProof (DTT.ProofSearchQuery sig ctx goal) term = do
+  let query = UDTT.toUDTTJudgment (DTT.Judgment sig ctx term goal)
+      checker = TC.typeCheck (TC.nullProver QT.defaultProofSearchSetting) False
+  r <- try $ timeout (60 * 1000000) $ ListT.head (checker query)
+  return $ case r of
+    Left (e :: SomeException) -> "error: " ++ map (\c -> if c `elem` ("\t\n\r" :: String) then ' ' else c) (show e)
+    Right Nothing             -> "timeout"
+    Right (Just Nothing)      -> "rejected"
+    Right (Just (Just _))     -> "accepted"
+
+-- | Wani resets its deadline at every depth and checks it only when entering
+-- a goal, so one search can run for hours; this caps each search from outside.
+-- Proofs found in the 30 s runs so far took at most about 31 s.
+proveAllCapSeconds :: Int
+proveAllCapSeconds = 600
+
+proveWithCap :: QT.ProofSearchSetting -> DTT.ProofSearchQuery
+             -> IO (String, [I.Tree QT.DTTrule DTT.Judgment], NominalDiffTime)
+proveWithCap setting query = do
+  start <- getCurrentTime
+  r <- timeout (proveAllCapSeconds * 1000000) (runProveWithTree Nothing setting query)
+  case r of
+    Just (trees, t) -> return (if null trees then "FAIL" else "OK", trees, t)
+    Nothing -> do
+      end <- getCurrentTime
+      return ("TIMEOUT", [], diffUTCTime end start)
+
+proveAllOne :: QT.ProofSearchSetting -> FilePath -> String -> JSeMProblemData -> DTT.ProofSearchQuery -> IO ()
+proveAllOne setting outDir baseName problem query@(DTT.ProofSearchQuery sig ctx goal) = do
+  let negGoal = DTT.Pi goal DTT.Bot
+  (posResult, posTrees, posTime) <- proveWithCap setting query
+  (negResult, negTrees, negTime) <- if null posTrees
+    then (\(r, ts, t) -> (Just r, ts, Just t)) <$> proveWithCap setting (DTT.ProofSearchQuery sig ctx negGoal)
+    else return (Nothing, [], Nothing)
+  writeProofTrees (outDir </> "proofTrees" </> "positive") baseName posTrees
+  when (null posTrees) $ writeProofTrees (outDir </> "proofTrees" </> "negative") baseName negTrees
+  let found = case (posTrees, negTrees) of
+        (t:_, _) -> Just ("positive", goal, t)
+        (_, t:_) -> Just ("negative", negGoal, t)
+        _        -> Nothing
+  (status, unknown) <- case found of
+    Nothing -> return ("-", [])
+    Just (polarity, g, t) -> do
+      let term = DTT.trm (I.node t)
+          unknown = List.nub [TL.unpack c | c <- termConstants term, c `notElem` map fst sig]
+      s <- typeCheckProof (DTT.ProofSearchQuery sig ctx g) term
+      unless (s == "accepted") $ do
+        let dir = outDir </> "typecheck-rejected"
+        createDirectoryIfMissing True dir
+        TL.writeFile (dir </> (baseName ++ ".txt")) $ TL.unlines
+          [ TL.pack ("JSeM ID: " ++ jspJsemId problem)
+          , TL.pack ("Polarity: " ++ polarity)
+          , TL.pack ("Type check: " ++ s)
+          , TL.pack ("Constants missing from the signature: " ++ List.intercalate ", " unknown)
+          , ""
+          , IText.toText (DTT.Judgment sig ctx term g)
+          ]
+      return (s, unknown)
+  let record = ProveAllRecord
+        { parJsemId    = jspJsemId problem
+        , parQuery     = query
+        , parPosResult = posResult
+        , parPosTime   = realToFrac posTime
+        , parNegResult = negResult
+        , parNegTime   = realToFrac <$> negTime
+        , parPolarity  = (\(p, _, _) -> p) <$> found
+        , parProof     = (\(_, _, t) -> toProofNode t) <$> found
+        , parTypeCheck = status
+        , parUnknown   = unknown
+        }
+  B.writeFile (outDir </> "records" </> (baseName ++ ".bin")) (encode record)
+  -- The results line is written last: on a restart it marks the problem as done.
+  appendFile (outDir </> "results.tsv") $ List.intercalate "\t"
+    [ baseName, jspJsemId problem
+    , posResult, printf "%.3f" (parPosTime record)
+    , maybe "-" id negResult, maybe "-" (printf "%.3f") (parNegTime record)
+    , status, List.intercalate "," unknown
+    ] ++ "\n"
+  putStrLn $ "pos " ++ posResult ++ " (" ++ printf "%.1f" (parPosTime record) ++ "s)"
+    ++ maybe "" (\r -> ", neg " ++ r ++ " (" ++ maybe "" (printf "%.1f") (parNegTime record) ++ "s)") negResult
+    ++ ", type check: " ++ status
+
+-- | Collects every saved proof into JSeMProblemData so that the existing
+-- training code can read Wani's proofs as it reads the type-check trees.
+writeProveAllTrainingData :: FilePath -> IO ()
+writeProveAllTrainingData outDir = do
+  files <- List.sort <$> listDirectory (outDir </> "records")
+  records <- forM files $ \f -> do
+    bytes <- B.readFile (outDir </> "records" </> f)
+    case decode bytes of
+      Left err -> error $ "Failed to decode " ++ f ++ ": " ++ show err
+      Right r -> return (r :: ProveAllRecord)
+  let training = [ JSeMProblemData (parJsemId r) (proofNodePairs p) (Just (parQuery r))
+                 | r <- records, Just p <- [parProof r] ]
+      count p = length (filter p records)
+  B.writeFile (outDir </> "training.bin") (encode training)
+  putStrLn ""
+  putStrLn $ "Problems:          " ++ show (length records)
+  putStrLn $ "Proved:            " ++ show (count ((== Just "positive") . parPolarity))
+  putStrLn $ "Negation proved:   " ++ show (count ((== Just "negative") . parPolarity))
+  putStrLn $ "Timed out (pos / neg): " ++ show (count ((== "TIMEOUT") . parPosResult))
+    ++ " / " ++ show (count ((== Just "TIMEOUT") . parNegResult))
+  putStrLn $ "Type check accepted / rejected / other: "
+    ++ show (count ((== "accepted") . parTypeCheck)) ++ " / "
+    ++ show (count ((== "rejected") . parTypeCheck)) ++ " / "
+    ++ show (count (\r -> parTypeCheck r `notElem` ["accepted", "rejected", "-"]))
+  putStrLn $ "Training data:     " ++ (outDir </> "training.bin")
+    ++ " (" ++ show (sum (map (length . jspJudgmentRules) training)) ++ " pairs)"
+
+proveAllMain :: [String] -> IO ()
+proveAllMain args = case args of
+  [jsemDataPath, depthStr, timeStr, outDir] -> do
+    let maxDepth = read depthStr :: Int
+        maxTime = read timeStr :: Int
+        setting = QT.defaultProofSearchSetting { QT.maxDepth = Just maxDepth, QT.maxTime = Just maxTime }
+        resultsFile = outDir </> "results.tsv"
+    createDirectoryIfMissing True (outDir </> "records")
+    commit <- either (\(_ :: SomeException) -> "unknown") (takeWhile (/= '\n'))
+                <$> try (readProcess "git" ["rev-parse", "HEAD"] "")
+    now <- getZonedTime
+    -- A long run may be restarted on a different commit, so every start is kept.
+    appendFile (outDir </> "starts.log") $
+      show now ++ "\tcommit " ++ commit ++ "\tmaxDepth " ++ show maxDepth ++ "\tmaxTime " ++ show maxTime
+        ++ "\tcapSeconds " ++ show proveAllCapSeconds ++ "\n"
+    resultsExist <- doesFileExist resultsFile
+    unless resultsExist $ writeFile resultsFile $ List.intercalate "\t"
+      ["base", "jsemId", "pos", "posTime", "neg", "negTime", "typeCheck", "unknownConstants"] ++ "\n"
+    -- Read strictly: a lazy read would keep the file open while it is appended to.
+    done <- Set.fromList . map (BC.unpack . BC.takeWhile (/= '\t')) . drop 1 . BC.lines
+              <$> B.readFile resultsFile
+    problems <- filter (not . null . jspInferenceQuery) <$> loadJSeMProblemsFromFile jsemDataPath
+    putStrLn $ "Problems with inference query: " ++ show (length problems)
+      ++ " (already done: " ++ show (Set.size done) ++ ")"
+    forM_ (zip [1 :: Int ..] problems) $ \(idx, problem) ->
+      forM_ (jspInferenceQuery problem) $ \query -> do
+        let baseName = printf "%03d_%s" idx (sanitize (jspJsemId problem)) :: String
+        unless (baseName `Set.member` done) $ do
+          putStr $ "[" ++ baseName ++ "] "
+          result <- try $ proveAllOne setting outDir baseName problem query
+          case result of
+            Right () -> return ()
+            Left (e :: SomeException) -> do
+              putStrLn $ "ERROR: " ++ show e
+              appendFile resultsFile $ baseName ++ "\t" ++ jspJsemId problem ++ "\terror\n"
+    writeProveAllTrainingData outDir
+  _ -> error $ unlines
+    [ "Usage: jsem-train-eval-exe --prove-all jsemDataPath maxDepth maxTime outDir"
+    , ""
+    , "Runs plain Wani on every problem (the negation too when the proposition is not proved),"
+    , "type-checks each proof found, and resumes from outDir/results.tsv when restarted."
+    , "Each search is stopped after " ++ show proveAllCapSeconds ++ " s and recorded as TIMEOUT."
+    ]
+
 main :: IO ()
 main = do
   rawArgs <- getArgs
+  case rawArgs of
+    ("--prove-all":rest) -> proveAllMain rest
+    _ -> trainAndEvaluate rawArgs
+
+trainAndEvaluate :: [String] -> IO ()
+trainAndEvaluate rawArgs = do
   let (reuseDir, args0) = takeReuseOption rawArgs
       saveSearchLogs = "--searchlog" `elem` args0
       args = filter (/= "--searchlog") args0
