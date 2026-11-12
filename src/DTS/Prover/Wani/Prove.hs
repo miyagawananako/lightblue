@@ -113,5 +113,5 @@ waniSetting QT.ProofSearchSetting{..} =
         WB.oracleThreshold=0.5,
         WB.enableNegativeOracle=enableNegativeOracle,
         WB.enableEq = enableEquality,
-        WB.enableConcurrent = True
+        WB.enableConcurrent = concurrent
         }
