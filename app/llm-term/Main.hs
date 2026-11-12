@@ -30,6 +30,7 @@ import qualified DTS.TypeChecker as TC
 import qualified DTS.Prover.Wani.BackwardRules as BR
 import qualified DTS.Prover.Wani.Prove as Prove
 import qualified LlmTerm
+import DttJson ()
 
 main :: IO ()
 main = do
@@ -67,7 +68,7 @@ llmBuild concurrent args = case args of
       : map fst outcomes
     BLC.writeFile (outDir </> "accepted.jsonl") $ BLC.unlines
       [ Aeson.encode (Aeson.Object (KeyMap.union (builtFields b) object)) | (_, Just (object, b)) <- outcomes ]
-    let rules = concatMap (builtRules . snd) [b | (_, Just b) <- outcomes]
+    let rules = concatMap (map snd . builtPairs . snd) [b | (_, Just b) <- outcomes]
         stageCount s = length [() | (row, _) <- outcomes, (List.splitOn "\t" row !! 3) == s]
         labels = Map.fromListWith (+) [ (show l, 1 :: Int) | r <- rules, Just l <- [BR.dttruleToRuleLabel r] ]
     putStrLn ""
@@ -87,7 +88,8 @@ data Built = Built
   { builtSearch     :: String
   , builtSearchTime :: Maybe Double
   , builtTrees      :: Int
-  , builtRules      :: [QT.DTTrule]  -- ^ of the first tree, one per (Judgment, rule) pair
+  , builtQuery      :: DTT.ProofSearchQuery
+  , builtPairs      :: [(DTT.Judgment, QT.DTTrule)]  -- ^ of the first tree
   }
 
 builtFields :: Built -> Aeson.Object
@@ -95,8 +97,10 @@ builtFields b = KeyMap.fromList
   [ "search" .= builtSearch b
   , "searchTime" .= builtSearchTime b
   , "trees" .= builtTrees b
-  , "pairs" .= length (builtRules b)
-  , "ruleLabels" .= Map.fromListWith (+) [ (show l, 1 :: Int) | r <- builtRules b, Just l <- [BR.dttruleToRuleLabel r] ]
+  , "pairs" .= length (builtPairs b)
+  , "ruleLabels" .= Map.fromListWith (+) [ (show l, 1 :: Int) | (_, r) <- builtPairs b, Just l <- [BR.dttruleToRuleLabel r] ]
+  , "query" .= builtQuery b
+  , "judgmentRules" .= builtPairs b
   ]
 
 -- | One problem: convert it, record whether plain Wani proves it on its own, and build
@@ -133,10 +137,10 @@ llmBuildOne concurrent idx problem = do
           termText = TL.unpack (IText.toText term)
       case built of
         Right (Just ts@(tree : _)) -> do
-          let rules = treeRules tree
-          putStrLn $ printf "tree (%d), %d pairs; plain Wani %s" (length ts) (length rules) search
-          return ( row "tree" termText [search, searchTime, show (length ts), buildTime, typeChecked, show (length rules)]
-                 , Just (Built search searchSeconds (length ts) rules) )
+          let pairs = treePairs tree
+          putStrLn $ printf "tree (%d), %d pairs; plain Wani %s" (length ts) (length pairs) search
+          return ( row "tree" termText [search, searchTime, show (length ts), buildTime, typeChecked, show (length pairs)]
+                 , Just (Built search searchSeconds (length ts) query pairs) )
         other -> do
           let detail = case other of
                 Left (e :: SomeException) -> "error: " ++ takeWhile (/= '\n') (show e)
@@ -147,9 +151,9 @@ llmBuildOne concurrent idx problem = do
   where
     oneLine = map (\c -> if c `elem` ("\t\n\r" :: String) then ' ' else c)
 
--- | Pre-order, the order the training pairs are taken in.
-treeRules :: I.Tree QT.DTTrule DTT.Judgment -> [QT.DTTrule]
-treeRules t = I.ruleName t : concatMap treeRules (I.daughters t)
+-- | Pre-order, the same order as proofNodePairs on the NeuralWani line.
+treePairs :: I.Tree QT.DTTrule DTT.Judgment -> [(DTT.Judgment, QT.DTTrule)]
+treePairs t = (I.node t, I.ruleName t) : concatMap treePairs (I.daughters t)
 
 runProveWithTree :: QT.ProofSearchSetting -> DTT.ProofSearchQuery
                  -> IO ([I.Tree QT.DTTrule DTT.Judgment], NominalDiffTime)
