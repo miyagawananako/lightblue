@@ -7,10 +7,13 @@ module LlmTerm
   , Elaborated(..)
   , readProblems
   , elaborateProblem
+  , fillEquations
   , llmTermSelfTest
   ) where
 
 import Control.Monad (foldM, forM, forM_, unless, when)
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.IO.Class (liftIO)
 import Control.Exception (evaluate, try, SomeException)
 import Data.List (elemIndex)
 import qualified Data.Aeson as Aeson
@@ -207,15 +210,15 @@ elab env e expected = case e of
     t' <- convType env t
     Right (reflAt DTT.Entity t', Just (DTT.Eq DTT.Entity t' t'))
   List [Atom "sym", eq] -> do
-    (eq', (s, t)) <- equation eq
-    Right (symTerm s t eq', Just (DTT.Eq DTT.Entity t s))
+    (_, (s, t)) <- equation eq
+    Right (eqHole env t s, Just (DTT.Eq DTT.Entity t s))
   List [Atom "trans", eq1, eq2] -> do
-    (eq1', (s, t)) <- equation eq1
-    (eq2', (_, u)) <- equation eq2
-    Right (transTerm s t u eq1' eq2', Just (DTT.Eq DTT.Entity s u))
+    (_, (s, _)) <- equation eq1
+    (_, (_, u)) <- equation eq2
+    Right (eqHole env s u, Just (DTT.Eq DTT.Entity s u))
   List [Atom "rewrite", eq, h] -> do
-    (eq', (s, t)) <- equation eq
-    rewriteTerm env s t eq' h
+    (_, (s, t)) <- equation eq
+    rewriteTerm env s t h
   Atom x -> do
     v <- lookupName env x
     Right (v, typeOf env v)
@@ -272,19 +275,62 @@ apps = foldl DTT.App
 reflAt :: DTT.Preterm -> DTT.Preterm -> DTT.Preterm
 reflAt ty x = apps forwardEqIntro [ty, x]
 
--- | From e : s = t, t = s: rewrite the right side of t = t to s. This is Wani's own proof.
-symTerm :: DTT.Preterm -> DTT.Preterm -> DTT.Preterm -> DTT.Preterm
-symTerm s t e = apps eqElim [forwardEqIntro, DTT.Entity, t, t, reflAt DTT.Entity t, s, e]
+-- | A proof of s = t left to Wani's own search (fillEquations), with the context it is
+-- needed in: Wani proves equations its own way, and a sym or trans written out by hand
+-- gives a deeper tree than the one its search builds.
+eqHole :: Env -> DTT.Preterm -> DTT.Preterm -> DTT.Preterm
+eqHole env s t = apps eqHoleMarker (DTT.Eq DTT.Entity s t : [maybe unknownType id ty | Binder _ ty <- envBinders env])
 
--- | From e1 : s = t and e2 : t = u, s = u, rewriting both sides of t = t so that
--- neither proof has to be one Wani can derive eqElim for.
-transTerm :: DTT.Preterm -> DTT.Preterm -> DTT.Preterm -> DTT.Preterm -> DTT.Preterm -> DTT.Preterm
-transTerm s t u e1 e2 = apps eqElim [forwardEqIntro, DTT.Entity, t, s, e1, u, symTerm t u e2]
+eqHoleMarker, unknownType :: DTT.Preterm
+eqHoleMarker = DTT.Con "?equation"
+unknownType = DTT.Con "?unknown"
 
--- | Rewrites every s to t in the type of h, given e : s = t.
-rewriteTerm :: Env -> DTT.Preterm -> DTT.Preterm -> DTT.Preterm -> SExpr
+-- | Fills each eqHole with the first proof Wani's search finds under the setting.
+fillEquations :: QT.ProofSearchSetting -> Elaborated -> IO (Either String Elaborated)
+fillEquations setting el = do
+  let DTT.ProofSearchQuery sig _ _ = elQuery el
+      fill :: DTT.Preterm -> ExceptT String IO DTT.Preterm
+      fill m = case spine m of
+        (h, goal : ctx) | h == eqHoleMarker -> do
+          when (unknownType `elem` ctx) $ throwError "an equation under a binder of unknown type"
+          found <- liftIO $ try $ timeout (60 * 1000000) $
+            ListT.head (Prove.prove' setting (DTT.ProofSearchQuery sig ctx goal))
+          let failed why = "Wani " ++ why ++ " the equation " ++ TL.unpack (IText.toText goal)
+          case found of
+            Left (_ :: SomeException) -> throwError (failed "fails on")
+            Right Nothing -> throwError (failed "times out on")
+            Right (Just Nothing) -> throwError (failed "does not prove")
+            Right (Just (Just tree)) -> return (DTT.trm (I.node tree))
+        _ -> descend fill m
+  fmap (\term -> el { elTerm = term }) <$> runExceptT (fill (elTerm el))
+  where
+    spine (DTT.App f x) = let (h, xs) = spine f in (h, xs ++ [x])
+    spine m = (m, [])
+
+-- | Applies f to the immediate subterms.
+descend :: Monad m => (DTT.Preterm -> m DTT.Preterm) -> DTT.Preterm -> m DTT.Preterm
+descend f m = case m of
+  DTT.Pi a b -> DTT.Pi <$> f a <*> f b
+  DTT.Lam a -> DTT.Lam <$> f a
+  DTT.App a b -> DTT.App <$> f a <*> f b
+  DTT.Not a -> DTT.Not <$> f a
+  DTT.Sigma a b -> DTT.Sigma <$> f a <*> f b
+  DTT.Pair a b -> DTT.Pair <$> f a <*> f b
+  DTT.Proj s a -> DTT.Proj s <$> f a
+  DTT.Disj a b -> DTT.Disj <$> f a <*> f b
+  DTT.Iota s a -> DTT.Iota s <$> f a
+  DTT.Unpack a b c d -> DTT.Unpack <$> f a <*> f b <*> f c <*> f d
+  DTT.Succ a -> DTT.Succ <$> f a
+  DTT.Natrec a b c d -> DTT.Natrec <$> f a <*> f b <*> f c <*> f d
+  DTT.Eq a b c -> DTT.Eq <$> f a <*> f b <*> f c
+  DTT.Refl a b -> DTT.Refl <$> f a <*> f b
+  DTT.Idpeel a b c -> DTT.Idpeel <$> f a <*> f b <*> f c
+  _ -> return m
+
+-- | Rewrites every s to t in the type of h, given s = t.
+rewriteTerm :: Env -> DTT.Preterm -> DTT.Preterm -> SExpr
             -> Either String (DTT.Preterm, Maybe DTT.Preterm)
-rewriteTerm env s t e h = do
+rewriteTerm env s t h = do
   let (headExpr, args) = case h of
         List (f@(Atom a) : xs) | a `notElem` keywords -> (f, xs)
         _ -> (h, [])
@@ -300,7 +346,7 @@ rewriteTerm env s t e h = do
     isForwardable (DTT.Var _) = True
     isForwardable (DTT.Proj _ m) = isForwardable m
     isForwardable _ = False
-    newEqOld = symTerm s t e
+    newEqOld = eqHole env t s
     -- `instantiated` holds the arguments given so far, innermost first, in env's scope;
     -- places are found in the uninstantiated type, as forEq sees it.
     walk instantiated ty [] =
@@ -407,7 +453,8 @@ selfTestCases =
      Just "(((eqElim 1) b) (((((((eqElim forwardEqIntro) entity) b) b) ((forwardEqIntro entity) b)) a) 0))")
   , (problem "sym" [("e", "(= a b)")] "(= b a)" "(sym e)",
      Just "(((((((eqElim forwardEqIntro) entity) b) b) ((forwardEqIntro entity) b)) a) 0)")
-  , (problem "trans" [("e1", "(= a b)"), ("e2", "(= b c)")] "(= a c)" "(trans e1 e2)", Nothing)
+  , (problem "trans" [("e1", "(= a b)"), ("e2", "(= b c)")] "(= a c)" "(trans e1 e2)",
+     Just "(((((eqElim 0) a) 1) c) ((forwardEqIntro entity) c))")
   , (problem "both-sides" [("h", "(R a a)"), ("e", "(= a b)")] "(R b b)" "(rewrite e h)",
      Just "(((((eqElim 1) b) (((((((eqElim forwardEqIntro) entity) b) b) ((forwardEqIntro entity) b)) a) 0)) b) (((((((eqElim forwardEqIntro) entity) b) b) ((forwardEqIntro entity) b)) a) 0))")
   , (problem "under-forall" [("h", "(forall y entity (R a y))"), ("e", "(= a b)")]
@@ -447,14 +494,17 @@ selfTestCases =
 llmTermSelfTest :: IO ()
 llmTermSelfTest = forM_ selfTestCases $ \(p, expected) -> do
   putStrLn $ "== " ++ lpName p
-  case elaborateProblem p of
+  let settingFor el = QT.defaultProofSearchSetting
+        { QT.maxDepth = Just 15, QT.maxTime = Just 30000, QT.logicSystem = Just (elLogic el) }
+  converted <- either (return . Left) (\el -> fillEquations (settingFor el) { QT.maxDepth = Just 9 } el)
+                 (elaborateProblem p)
+  case converted of
     Left err -> putStrLn $ "  conversion failed: " ++ err
     Right el -> do
       let termText = TL.unpack (IText.toText (elTerm el))
       putStrLn $ "  term: " ++ termText
       forM_ expected $ \w -> putStrLn $ "  same as Wani's: " ++ show (termText == w)
-      let setting = QT.defaultProofSearchSetting
-            { QT.maxDepth = Just 15, QT.maxTime = Just 30000, QT.logicSystem = Just (elLogic el) }
+      let setting = settingFor el
       built <- try $ timeout (60 * 1000000) $ do
         ts <- Prove.proveWithTerm setting (elQuery el) (elTerm el)
         evaluate (length ts)

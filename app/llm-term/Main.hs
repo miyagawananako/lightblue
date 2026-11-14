@@ -112,15 +112,17 @@ llmBuildOne concurrent idx problem = do
   let name = LlmTerm.lpName problem
       row stage detail rest = List.intercalate "\t" ([show idx, name, LlmTerm.lpLogic problem, stage, oneLine detail] ++ rest)
   putStr $ printf "[%d] %s: " idx name
-  case LlmTerm.elaborateProblem problem of
+  let settingFor el = QT.defaultProofSearchSetting { QT.maxDepth = Just 9, QT.maxTime = Just 30000, QT.logicSystem = Just (LlmTerm.elLogic el), QT.concurrent = concurrent }
+  converted <- either (return . Left) (\el -> LlmTerm.fillEquations (settingFor el) el)
+                 (LlmTerm.elaborateProblem problem)
+  case converted of
     Left err -> do
       putStrLn $ "not converted: " ++ err
       return (row "not converted" err ["-", "-", "-", "-", "-", "-", "-"], Nothing)
     Right el -> do
       let query = LlmTerm.elQuery el
           term = LlmTerm.elTerm el
-          logic = Just (LlmTerm.elLogic el)
-          searchSetting = QT.defaultProofSearchSetting { QT.maxDepth = Just 9, QT.maxTime = Just 30000, QT.logicSystem = logic, QT.concurrent = concurrent }
+          searchSetting = settingFor el
           buildSetting = searchSetting { QT.maxDepth = Just 15 }
       searched <- try $ timeout (120 * 1000000) (runProveWithTree searchSetting query)
       let (search, searchSeconds) = case searched of
