@@ -64,7 +64,7 @@ llmBuild concurrent args = case args of
           (row, built) <- llmBuildOne concurrent idx problem
           return (row, fmap ((,) object) built)
     writeFile (outDir </> "results.tsv") $ unlines $
-      List.intercalate "\t" ["idx", "name", "logic", "stage", "detail", "search", "searchTime", "trees", "buildTime", "typeCheck", "pairs"]
+      List.intercalate "\t" ["idx", "name", "logic", "stage", "detail", "search", "searchTime", "trees", "buildTime", "typeCheck", "pairs", "within9"]
       : map fst outcomes
     BLC.writeFile (outDir </> "accepted.jsonl") $ BLC.unlines
       [ Aeson.encode (Aeson.Object (KeyMap.union (builtFields b) object)) | (_, Just (object, b)) <- outcomes ]
@@ -90,6 +90,7 @@ data Built = Built
   , builtTrees      :: Int
   , builtQuery      :: DTT.ProofSearchQuery
   , builtPairs      :: [(DTT.Judgment, QT.DTTrule)]  -- ^ of the first tree
+  , builtWithin9    :: String
   }
 
 builtFields :: Built -> Aeson.Object
@@ -101,6 +102,7 @@ builtFields b = KeyMap.fromList
   , "ruleLabels" .= Map.fromListWith (+) [ (show l, 1 :: Int) | (_, r) <- builtPairs b, Just l <- [BR.dttruleToRuleLabel r] ]
   , "query" .= builtQuery b
   , "judgmentRules" .= builtPairs b
+  , "within9" .= builtWithin9 b
   ]
 
 -- | One problem: convert it, record whether plain Wani proves it on its own, and build
@@ -113,7 +115,7 @@ llmBuildOne concurrent idx problem = do
   case LlmTerm.elaborateProblem problem of
     Left err -> do
       putStrLn $ "not converted: " ++ err
-      return (row "not converted" err ["-", "-", "-", "-", "-", "-"], Nothing)
+      return (row "not converted" err ["-", "-", "-", "-", "-", "-", "-"], Nothing)
     Right el -> do
       let query = LlmTerm.elQuery el
           term = LlmTerm.elTerm el
@@ -137,17 +139,26 @@ llmBuildOne concurrent idx problem = do
           termText = TL.unpack (IText.toText term)
       case built of
         Right (Just ts@(tree : _)) -> do
+          -- Plain search stops at depth 9, so a tree beyond it is out of its reach.
+          within <- try $ timeout (60 * 1000000) $ do
+            ts9 <- Prove.proveWithTerm buildSetting { QT.maxDepth = Just 9 } query term
+            evaluate (length ts9)
           let pairs = treePairs tree
-          putStrLn $ printf "tree (%d), %d pairs; plain Wani %s" (length ts) (length pairs) search
-          return ( row "tree" termText [search, searchTime, show (length ts), buildTime, typeChecked, show (length pairs)]
-                 , Just (Built search searchSeconds (length ts) query pairs) )
+              within9 = case within of
+                Left (_ :: SomeException) -> "error"
+                Right Nothing -> "timeout"
+                Right (Just 0) -> "no"
+                Right (Just _) -> "yes"
+          putStrLn $ printf "tree (%d), %d pairs, within depth 9: %s; plain Wani %s" (length ts) (length pairs) within9 search
+          return ( row "tree" termText [search, searchTime, show (length ts), buildTime, typeChecked, show (length pairs), within9]
+                 , Just (Built search searchSeconds (length ts) query pairs within9) )
         other -> do
           let detail = case other of
                 Left (e :: SomeException) -> "error: " ++ takeWhile (/= '\n') (show e)
                 Right Nothing -> "timeout"
                 _ -> "no tree"
           putStrLn $ printf "%s; plain Wani %s" detail search
-          return (row "no tree" (detail ++ ": " ++ termText) [search, searchTime, "0", buildTime, typeChecked, "0"], Nothing)
+          return (row "no tree" (detail ++ ": " ++ termText) [search, searchTime, "0", buildTime, typeChecked, "0", "-"], Nothing)
   where
     oneLine = map (\c -> if c `elem` ("\t\n\r" :: String) then ' ' else c)
 
