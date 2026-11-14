@@ -64,7 +64,7 @@ llmBuild concurrent args = case args of
           (row, built) <- llmBuildOne concurrent idx problem
           return (row, fmap ((,) object) built)
     writeFile (outDir </> "results.tsv") $ unlines $
-      List.intercalate "\t" ["idx", "name", "logic", "stage", "detail", "search", "searchTime", "trees", "buildTime", "typeCheck", "pairs", "within9"]
+      List.intercalate "\t" ["idx", "name", "logic", "stage", "detail", "search", "searchTime", "trees", "buildTime", "typeCheck", "pairs", "depth9"]
       : map fst outcomes
     BLC.writeFile (outDir </> "accepted.jsonl") $ BLC.unlines
       [ Aeson.encode (Aeson.Object (KeyMap.union (builtFields b) object)) | (_, Just (object, b)) <- outcomes ]
@@ -90,7 +90,7 @@ data Built = Built
   , builtTrees      :: Int
   , builtQuery      :: DTT.ProofSearchQuery
   , builtPairs      :: [(DTT.Judgment, QT.DTTrule)]  -- ^ of the first tree
-  , builtWithin9    :: String
+  , builtDepth9     :: String
   }
 
 builtFields :: Built -> Aeson.Object
@@ -102,7 +102,7 @@ builtFields b = KeyMap.fromList
   , "ruleLabels" .= Map.fromListWith (+) [ (show l, 1 :: Int) | (_, r) <- builtPairs b, Just l <- [BR.dttruleToRuleLabel r] ]
   , "query" .= builtQuery b
   , "judgmentRules" .= builtPairs b
-  , "within9" .= builtWithin9 b
+  , "depth9" .= builtDepth9 b
   ]
 
 -- | One problem: convert it, record whether plain Wani proves it on its own, and build
@@ -140,18 +140,19 @@ llmBuildOne concurrent idx problem = do
       case built of
         Right (Just ts@(tree : _)) -> do
           -- Plain search stops at depth 9, so a tree beyond it is out of its reach.
-          within <- try $ timeout (60 * 1000000) $ do
+          built9 <- try $ timeout (60 * 1000000) $ do
             ts9 <- Prove.proveWithTerm buildSetting { QT.maxDepth = Just 9 } query term
             evaluate (length ts9)
           let pairs = treePairs tree
-              within9 = case within of
+              -- Not yes/no, which read as JSeM's answers (the hypothesis or its negation is proved).
+              depth9 = case built9 of
                 Left (_ :: SomeException) -> "error"
                 Right Nothing -> "timeout"
-                Right (Just 0) -> "no"
-                Right (Just _) -> "yes"
-          putStrLn $ printf "tree (%d), %d pairs, within depth 9: %s; plain Wani %s" (length ts) (length pairs) within9 search
-          return ( row "tree" termText [search, searchTime, show (length ts), buildTime, typeChecked, show (length pairs), within9]
-                 , Just (Built search searchSeconds (length ts) query pairs within9) )
+                Right (Just 0) -> "exceeds"
+                Right (Just _) -> "fits"
+          putStrLn $ printf "tree (%d), %d pairs, depth 9: %s; plain Wani %s" (length ts) (length pairs) depth9 search
+          return ( row "tree" termText [search, searchTime, show (length ts), buildTime, typeChecked, show (length pairs), depth9]
+                 , Just (Built search searchSeconds (length ts) query pairs depth9) )
         other -> do
           let detail = case other of
                 Left (e :: SomeException) -> "error: " ++ takeWhile (/= '\n') (show e)
