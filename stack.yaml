@@ -20,6 +20,7 @@ extra-lib-dirs:
   - /home/nanacom/.local/lib/hasktorch/deps/libtokenizers/lib
 
 extra-deps:
+- shakespeare-2.0.30
 - git: http://github.com/DaisukeBekki/JSeM
   commit: c2cd39168e267007b4690dbf625329bac57a8185
 - git: http://github.com/DaisukeBekki/nlp-tools

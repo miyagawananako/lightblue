@@ -38,6 +38,9 @@ module DTS.Prover.Wani.WaniBase (
     goalFromSubGoal,
     cluesFromSubGoal,
     substLstFromSubGoal,
+    allProofPolicyFromSubGoal,
+    AllProofPolicy(..),
+    oneProofIfTerm,
     SubstSet(..),
     treeFromSubGoalSet,
     dsideFromSubGoalSet,
@@ -82,7 +85,7 @@ data Status = Status
    deduceNgLst :: [(A.Context,AType)], -- ^ Once wani failed to @deduce@, wani add the pair to this list
    usedDisJoint :: [ATerm],
    usedMaxDepth ::Depth, 
-   allProof :: Bool -- ^ In the bottom of the tree, one proof is enough to judge whether the hypo is true or not.
+   allProof :: Bool -- | 'False': Stop searching remaining subgoalsets once a valid proof is found. / 'True': Search all subgoalsets and aggregate all proofs. Set to 'True' at the top level to support anaphora resolution (#134). Delegation to child subgoals is controlled via 'AllProofPolicy' (#293). subgoals with terms use 'OneProof' (#301).
   }deriving (Show,Eq)
 
 data Setting = Setting
@@ -96,6 +99,7 @@ data Setting = Setting
    timeLimit :: M.Maybe Time.UTCTime,
    oracle :: Maybe (DdB.ConName -> DdB.ConName -> Float),
    oracleThreshold :: Float,
+   enableNegativeOracle :: Bool,
    enableEq :: Bool,
    enableConcurrent :: Bool,
    getPrioritizedRules :: M.Maybe (Goal -> [BR.RuleLabel] -> [BR.RuleLabel]),
@@ -152,7 +156,7 @@ statusDef :: Status
 statusDef = Status{failedlst=[],usedMaxDepth = 0,deduceNgLst=[],usedDisJoint=[],allProof = False}
 
 settingDef :: Setting
-settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,oracle=M.Nothing,oracleThreshold=0.5,enableEq=True,enableConcurrent=False,getPrioritizedRules = M.Nothing,searchLog=Nothing,searchLogRuleName=Nothing,searchLogSubgoalIndex=Nothing,searchLogParentGoalId=Nothing,searchLogSubgoalSetId=Nothing}
+settingDef = Setting{mode = Plain,falsum = True,maxdepth = 9,maxtime = 100000,debug = 0,sStatus = statusDef,ruleConHojo = "sub",timeLimit = M.Nothing,oracle=M.Nothing,oracleThreshold=0.5,enableNegativeOracle=False,enableEq=True,enableConcurrent=False,getPrioritizedRules = M.Nothing,searchLog=Nothing,searchLogRuleName=Nothing,searchLogSubgoalIndex=Nothing,searchLogParentGoalId=Nothing,searchLogSubgoalSetId=Nothing}
 
 resultDef :: Result
 resultDef = Result{trees = [],errMsg = "",rStatus = statusDef}
@@ -207,11 +211,21 @@ goal2NeuralWaniJudgement (Goal _ _ _ _) = Nothing
 
 type Rule = Goal -> Setting -> IO ([SubGoalSet],T.Text)
 
+-- | Whether a subgoal needs every proof.  Every proof is needed only where a later
+-- | subgoal's type is built from this subgoal's proof term, which is not the case for
+-- | a PiI body or a last SigmaI component.
+data AllProofPolicy = Inherit | AllProof | OneProof deriving (Eq,Show)
+
+oneProofIfTerm :: M.Maybe a -> AllProofPolicy -> AllProofPolicy
+oneProofIfTerm canBeTerm ifDeduced =
+  M.maybe ifDeduced (\_ -> OneProof) canBeTerm
+
 data SubGoal = 
   SubGoal 
     Goal
     SubstLst
     Clue
+    AllProofPolicy
   deriving (Eq,Show)
 
 -- | In deduce, the proof search is performed from the left side of the upper row. 
@@ -254,13 +268,16 @@ generatedTempTerm (sig,origin) id =
 type Clue = (Maybe (ProofTerm,[(Int,ProofType)]),Maybe ProofTerm)
 
 goalFromSubGoal :: SubGoal -> Goal
-goalFromSubGoal (SubGoal goal substLst clue) = goal
+goalFromSubGoal (SubGoal goal substLst clue allProofPolicy) = goal
 
 substLstFromSubGoal :: SubGoal -> SubstLst
-substLstFromSubGoal (SubGoal goal substLst clue) = substLst
+substLstFromSubGoal (SubGoal goal substLst clue allProofPolicy) = substLst
 
 cluesFromSubGoal :: SubGoal -> Clue
-cluesFromSubGoal (SubGoal goal substLst clue) = clue
+cluesFromSubGoal (SubGoal goal substLst clue allProofPolicy) = clue
+
+allProofPolicyFromSubGoal :: SubGoal -> AllProofPolicy
+allProofPolicyFromSubGoal (SubGoal goal substLst clue allProofPolicy) = allProofPolicy
 
 data SubGoalSet = 
   SubGoalSet 

@@ -4,7 +4,8 @@ module DTS.Prover.Wani.Prove
 (
   display,
   prove',
-  prove'WithLog
+  prove'WithLog,
+  proveWithTerm
 ) where
 
 import qualified Interface.Tree as UDT
@@ -75,8 +76,39 @@ prove' = prove'WithLog Nothing
 
 -- | Prover with optional structured event logging for visualization
 prove'WithLog :: Maybe SearchLog -> QT.ProverBuilder
-prove'WithLog mLog QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) =  -- LiftT IO (Tree (U.Judgment U.DTT) UDTTrule)
-  let setting = WB.Setting {
+prove'WithLog mLog psSetting@QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) =  -- LiftT IO (Tree (U.Judgment U.DTT) UDTTrule)
+  let base = waniSetting psSetting
+      -- A search log needs sequential execution to be accurate, so it
+      -- overrides `concurrent`.
+      setting = base {
+        WB.searchLog = mLog,
+        WB.enableConcurrent = M.isNothing mLog && WB.enableConcurrent base
+        }
+      ioResult = hojo ctx ((A.aEntityName,DdB.Type):sig) typ setting (M.maybe Nothing (\t -> M.Just $ toEnum (t * (10^9))) maxTime)
+  in ListT.lift ioResult >>= \result ->
+    ListT.fromFoldable (map A.aTreeTojTree' (WB.trees result))
+
+-- | Builds Wani's derivation of a given proof term: the term goes into the
+-- goal, so the rules decompose it instead of searching. Not bounded by time:
+-- callers must bound it, since the depths below the one the term needs can
+-- still take long to fail.
+proveWithTerm :: QT.ProofSearchSetting -> DdB.ProofSearchQuery -> DdB.Preterm -> IO [UDT.Tree QT.DTTrule DdB.Judgment]
+proveWithTerm psSetting (DdB.ProofSearchQuery sig ctx typ) term =
+  let setting = (waniSetting psSetting) { WB.timeLimit = M.Nothing }
+      sigEnv = map (Data.Bifunctor.second A.fromDT2A) ((A.aEntityName,DdB.Type):sig)
+      varEnv = map A.fromDT2A ctx
+      goal = WB.Goal sigEnv varEnv (M.Just (A.fromDT2A term)) [A.fromDT2A typ]
+      -- Deepening as the search does: starting at the full depth lets failing
+      -- branches run to it before the proof is returned.
+      atDepth d = BR.deduce' goal 1 setting { WB.maxdepth = d } >>= \result ->
+        if null (WB.trees result) && d < WB.maxdepth setting
+          then atDepth (d + 1)
+          else return result
+  in map A.aTreeTojTree' . WB.trees <$> atDepth 1
+
+waniSetting :: QT.ProofSearchSetting -> WB.Setting
+waniSetting QT.ProofSearchSetting{..} =
+  WB.Setting {
         WB.mode = case logicSystem of
                     Nothing -> WB.Plain
                     Just QT.Intuitionistic -> WB.WithEFQ
@@ -88,21 +120,18 @@ prove'WithLog mLog QT.ProofSearchSetting{..} (DdB.ProofSearchQuery sig ctx typ) 
         WB.maxtime = case maxTime of
                         Just t -> t
                         Nothing -> 100000,
+        -- A trace per root goal would be timed with the search.
         WB.debug = -1,
         WB.sStatus = WB.statusDef,
         WB.oracle = oracle,
         WB.oracleThreshold=0.5,
-        WB.enableEq = True,
-        -- A search log needs sequential execution to be accurate, so it
-        -- overrides `concurrent`; without one, `concurrent` defaults to True.
-        WB.enableConcurrent = M.isNothing mLog && M.fromMaybe True concurrent,
+        WB.enableNegativeOracle=enableNegativeOracle,
+        WB.enableEq = enableEquality,
+        WB.enableConcurrent = M.fromMaybe True concurrent,
         WB.getPrioritizedRules = neuralWani,
-        WB.searchLog = mLog,
+        WB.searchLog = Nothing,
         WB.searchLogRuleName = Nothing,
         WB.searchLogSubgoalIndex = Nothing,
         WB.searchLogParentGoalId = Nothing,
         WB.searchLogSubgoalSetId = Nothing
-        };
-      ioResult = hojo ctx ((A.aEntityName,DdB.Type):sig) typ setting (M.maybe Nothing (\t -> M.Just $ toEnum (t * (10^9))) maxTime)
-  in ListT.lift ioResult >>= \result ->
-    ListT.fromFoldable (map A.aTreeTojTree' (WB.trees result))
+        }
