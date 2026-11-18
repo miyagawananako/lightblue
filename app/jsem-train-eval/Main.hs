@@ -39,6 +39,9 @@ import qualified Data.Set as Set
 import qualified Data.List as List
 import qualified Data.List.Split as List
 import System.Environment (getArgs)
+import System.Process (readProcessWithExitCode)
+import System.Exit (ExitCode(..))
+import System.IO (hSetBuffering, stdout, BufferMode(..))
 import System.Mem (performGC, performMajorGC)
 import Text.Printf (printf)
 import qualified ListT
@@ -139,7 +142,9 @@ data ProverConfig = ProverConfig
   { cfgMaxDepth     :: Int
   , cfgMaxTime      :: Int
   , cfgConcurrent   :: Maybe Bool  -- ^ Nothing: wani's default (concurrent unless logging)
-  } deriving (Show)
+  , cfgCacheScope   :: CacheScope
+  , cfgCode         :: CodeInfo
+  }
 
 -- | 評価結果を格納するデータ型
 data EvaluationResult = EvaluationResult
@@ -424,11 +429,13 @@ writeProofTrees baseDir baseName trees = do
         writeProofTreeHTML htmlPath tree
 
 -- | NeuralWaniを構築する関数（学習済みモデルから）
+-- The cache must be created in IO: made with `unsafePerformIO $ newIORef`,
+-- GHC is free to share one cache between all the calls.
 buildNeuralWani :: Device -> Params -> WordMap -> Bool -> Maybe Int -> DelimiterToken 
-                -> (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
-buildNeuralWani device model wordMap biDirectional topK delimiterToken = 
-  let cacheRef = unsafePerformIO $ newIORef (Map.empty :: Map.Map DdB.Judgment [BR.RuleLabel])
-  in \goal availableRuleLabels ->
+                -> IO (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel])
+buildNeuralWani device model wordMap biDirectional topK delimiterToken = do
+  cacheRef <- newIORef (Map.empty :: Map.Map DdB.Judgment [BR.RuleLabel])
+  return $ \goal availableRuleLabels ->
     let maybeJudgment = WB.goal2NeuralWaniJudgement goal
     in case maybeJudgment of
       Just judgment ->
@@ -577,6 +584,37 @@ printEvalSummary results = do
   putStrLn $ "Normal only success: " ++ show (length normalOnlySuccess)
 
 -- | 評価結果をファイルに保存
+data CodeInfo = CodeInfo
+  { codeBranch      :: String
+  , codeCommit      :: String
+  , codeSubject     :: String
+  , codeUncommitted :: Bool
+  }
+
+showCodeInfo :: CodeInfo -> String
+showCodeInfo c = codeBranch c ++ " @ " ++ codeCommit c ++ " \"" ++ codeSubject c ++ "\""
+  ++ (if codeUncommitted c then " + uncommitted changes" else "")
+
+-- The commit hash alone does not tell which prover a run measured, so the
+-- subject line is kept with it.
+readCodeInfo :: IO CodeInfo
+readCodeInfo = do
+  let git args = do
+        r <- try (readProcessWithExitCode "git" args "")
+        return $ case r of
+          Right (ExitSuccess, out, _) -> takeWhile (/= '\n') out
+          Right _ -> "unknown"
+          Left (_ :: SomeException) -> "unknown"
+  branch <- git ["rev-parse", "--abbrev-ref", "HEAD"]
+  commit <- git ["rev-parse", "--short", "HEAD"]
+  subject <- git ["log", "-1", "--format=%s"]
+  r <- try (readProcessWithExitCode "git" ["status", "--porcelain", "--untracked-files=no"] "")
+  let uncommitted = case r of
+        Right (ExitSuccess, out, _) -> not (null out)
+        Right _ -> True
+        Left (_ :: SomeException) -> True
+  return CodeInfo { codeBranch = branch, codeCommit = commit, codeSubject = subject, codeUncommitted = uncommitted }
+
 saveProofSearchReport :: FilePath -> ProverConfig -> [ProofSearchEvalResult] -> IO ()
 saveProofSearchReport outputDir config results = do
   let reportFile = outputDir </> "proof-search-eval-report.txt"
@@ -601,6 +639,9 @@ saveProofSearchReport outputDir config results = do
         , "  maxDepth: " ++ show (cfgMaxDepth config)
         , "  maxTime: " ++ show (cfgMaxTime config)
         , "  concurrent: " ++ maybe "default" show (cfgConcurrent config)
+        , "  cacheScope: " ++ showCacheScope (cfgCacheScope config)
+        , "  allProofAtRoot: " ++ show (WB.allProof WB.statusDef)
+        , "  code: " ++ showCodeInfo (cfgCode config)
         , ""
         , "Results:"
         , "  Total tests: " ++ show totalTests
@@ -743,6 +784,9 @@ generateTexContentJSeM config sessionId modelDir results = TL.unlines
   , "\\begin{itemize}"
   , "\\item maxDepth: " <> TL.pack (show (cfgMaxDepth config))
   , "\\item maxTime: " <> TL.pack (show (cfgMaxTime config)) <> " ms"
+  , "\\item cacheScope: " <> TL.pack (showCacheScope (cfgCacheScope config))
+  , "\\item allProofAtRoot: " <> TL.pack (show (WB.allProof WB.statusDef))
+  , "\\item code: \\texttt{" <> escapeTeX (TL.pack (showCodeInfo (cfgCode config))) <> "}"
   , "\\item Session ID: \\texttt{" <> escapeTeX (TL.pack sessionId) <> "}"
   , "\\item Output Directory: \\texttt{" <> escapeTeX (TL.pack modelDir) <> "}"
   , "\\end{itemize}"
@@ -775,10 +819,46 @@ takeReuseOption ("--reuse":d:rest) = let (m, r) = takeReuseOption rest
 takeReuseOption (x:rest) = let (m, r) = takeReuseOption rest in (m, x:r)
 takeReuseOption [] = (Nothing, [])
 
+takeTimeLimitsOption :: [String] -> (Maybe [Int], [String])
+takeTimeLimitsOption ("--timelimits":ts:rest) = let (m, r) = takeTimeLimitsOption rest
+                                               in (maybe (Just (map read (List.splitOn "," ts))) Just m, r)
+takeTimeLimitsOption (x:rest) = let (m, r) = takeTimeLimitsOption rest in (m, x:r)
+takeTimeLimitsOption [] = (Nothing, [])
+
+data CacheScope = CachePerProblem | CachePerTimeLimit
+  deriving (Eq)
+
+showCacheScope :: CacheScope -> String
+showCacheScope CachePerProblem   = "problem"
+showCacheScope CachePerTimeLimit = "timelimit"
+
+takeCacheScopeOption :: [String] -> (Maybe CacheScope, [String])
+takeCacheScopeOption ("--cachescope":c:rest) = let (m, r) = takeCacheScopeOption rest
+                                              in (maybe (Just (parse c)) Just m, r)
+  where parse "problem"   = CachePerProblem
+        parse "timelimit" = CachePerTimeLimit
+        parse x = error $ "--cachescope must be problem or timelimit: " ++ x
+takeCacheScopeOption (x:rest) = let (m, r) = takeCacheScopeOption rest in (m, x:r)
+takeCacheScopeOption [] = (Nothing, [])
+
+takeProblemsOption :: [String] -> (Maybe [String], [String])
+takeProblemsOption ("--problems":ps:rest) = let (m, r) = takeProblemsOption rest
+                                           in (maybe (Just (List.splitOn "," ps)) Just m, r)
+takeProblemsOption (x:rest) = let (m, r) = takeProblemsOption rest in (m, x:r)
+takeProblemsOption [] = (Nothing, [])
+
 main :: IO ()
 main = do
+  -- Progress lines go to a log file in background runs; without line
+  -- buffering they only show up long after each problem finishes.
+  hSetBuffering stdout LineBuffering
   rawArgs <- getArgs
-  let (reuseDir, args0) = takeReuseOption rawArgs
+  let (reuseDir, args1) = takeReuseOption rawArgs
+      (timeLimitsOpt, args2) = takeTimeLimitsOption args1
+      (cacheScopeOpt, args3) = takeCacheScopeOption args2
+      (problemsOpt, args0) = takeProblemsOption args3
+      cacheScope = maybe CachePerTimeLimit id cacheScopeOpt
+      timeLimits = maybe [30000, 60000, 90000] id timeLimitsOpt
       saveSearchLogs = "--searchlog" `elem` args0
       -- --sequential / --concurrent choose how wani runs independently of
       -- logging, so timings can be taken sequentially without the cost of
@@ -796,7 +876,7 @@ main = do
     error "--searchlog runs the search sequentially; it cannot be combined with --concurrent"
 
   -- コマンドライン引数のパース
-  -- Usage: jsem-train-eval-exe [--reuse <dir>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
+  -- Usage: jsem-train-eval-exe [--reuse <dir>] [--timelimits <ms,...>] [--cachescope <problem|timelimit>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]
   let (jsemDataPath, bi, emb, h, l, bias, lr, steps, iter, maxDepth, threshold, topK) = case args of
         [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] ->
           ( a0                    -- JSeMProblemDataファイルパス
@@ -841,7 +921,7 @@ main = do
           , Just (read a11 :: Int) -- topK (optional)
           )
         _ -> error $ unlines
-          [ "Usage: jsem-train-eval-exe [--reuse <dir>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
+          [ "Usage: jsem-train-eval-exe [--reuse <dir>] [--timelimits <ms,...>] [--cachescope <problem|timelimit>] [--searchlog] [--sequential|--concurrent] jsemDataPath biDirectional embDim hiddenSize layers bias lr batchSize epochs maxDepth [threshold] [topK]"
           , ""
           , "Example: jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9"
           , "Example (with topK and threshold): jsem-train-eval-exe jsemProblemData.bin False 256 256 1 False 5.0e-4 32 10 9 2000 5"
@@ -862,6 +942,9 @@ main = do
           , ""
           , "Options:"
           , "  --reuse <dir> : Evaluate the model, word map and test cases in <dir> instead of training"
+          , "  --timelimits <ms,...> : Time limits to evaluate, comma separated (default: 30000,60000,90000)"
+          , "  --cachescope <s>      : Lifetime of the NeuralWani prediction cache: problem or timelimit (default: timelimit)"
+          , "  --problems <id,...>   : Evaluate only these JSeM ids, keeping their test case numbers (default: all)"
           , "  --searchlog   : Write each search's events to eval_T*/searchLogs/*.jsonl (forces sequential search)"
           , "  --sequential  : Run wani sequentially (use this for timings comparable with --searchlog runs)"
           , "  --concurrent  : Run wani concurrently"
@@ -959,15 +1042,21 @@ main = do
       learningRate = toDevice device (asTensor (lr :: Float))
       numberOfBatch = steps
 
+  codeInfo <- readCodeInfo
   currentTime <- getZonedTime
   let timeString = Time.formatTime Time.defaultTimeLocale "%Y-%m-%d_%H-%M-%S" (zonedTimeToLocalTime currentTime)
       folderName = "jsem_bi" ++ show biDirectional ++ "_s" ++ show numberOfBatch ++
                    "_lr" ++ show (asValue learningRate :: Float) ++ "_i" ++ show embDim ++
                    "_h" ++ show hiddenSize ++ "_layer" ++ show numOfLayers
       baseFolderPath = "jsemResults" </> folderName </> timeString
-      topKDirName = case topK of
+      -- The cache scope and allProof are part of the name: they change what
+      -- is measured, and runs differing in them are otherwise indistinguishable.
+      allProofName = if WB.allProof WB.statusDef then "" else "_allproof-false"
+      -- Logging slows the search down, so these timings must not be read as measurements.
+      searchLogName = if saveSearchLogs then "_searchlog" else ""
+      topKDirName = (case topK of
         Nothing -> "topk_nothing"
-        Just k -> "topk_" ++ show k
+        Just k -> "topk_" ++ show k) ++ "_cache-" ++ showCacheScope cacheScope ++ allProofName ++ searchLogName
       newFolderPath = baseFolderPath </> topKDirName
 
   createDirectoryIfMissing True newFolderPath
@@ -976,7 +1065,9 @@ main = do
   -- Record what produced this directory. Without it the hyperparameters can
   -- only be guessed back from the directory name, which does not carry bias,
   -- epochs or threshold, and nothing records which model was evaluated.
-  let jstr s = "\"" ++ s ++ "\""
+  let jstr :: String -> String
+      jstr s = "\"" ++ concatMap (\c -> if c `elem` ['"', '\\'] then ['\\', c] else [c]) s ++ "\""
+      jbool b = if b then "true" else "false"
       jmaybe = maybe "null" show
       configJson = unlines
         [ "{"
@@ -993,8 +1084,18 @@ main = do
         , "  " ++ jstr "maxDepth"      ++ ": " ++ show maxDepth ++ ","
         , "  " ++ jstr "threshold"     ++ ": " ++ jmaybe threshold ++ ","
         , "  " ++ jstr "topK"          ++ ": " ++ jmaybe topK ++ ","
+        , "  " ++ jstr "timeLimits"    ++ ": " ++ show timeLimits ++ ","
+        , "  " ++ jstr "cacheScope"    ++ ": " ++ jstr (showCacheScope cacheScope) ++ ","
+        , "  " ++ jstr "problems"      ++ ": " ++ maybe "null" (\ps -> "[" ++ List.intercalate "," (map jstr ps) ++ "]") problemsOpt ++ ","
         , "  " ++ jstr "searchLog"     ++ ": " ++ (if saveSearchLogs then "true" else "false") ++ ","
         , "  " ++ jstr "concurrent"    ++ ": " ++ maybe "null" (\c -> if c then "true" else "false") concurrency ++ ","
+        , "  " ++ jstr "allProofAtRoot" ++ ": " ++ jbool (WB.allProof WB.statusDef) ++ ","
+        , "  " ++ jstr "code"          ++ ": {"
+        , "    " ++ jstr "branch"             ++ ": " ++ jstr (codeBranch codeInfo) ++ ","
+        , "    " ++ jstr "commit"             ++ ": " ++ jstr (codeCommit codeInfo) ++ ","
+        , "    " ++ jstr "commitSubject"      ++ ": " ++ jstr (codeSubject codeInfo) ++ ","
+        , "    " ++ jstr "uncommittedChanges" ++ ": " ++ jbool (codeUncommitted codeInfo)
+        , "  },"
         , "  " ++ jstr "runAt"         ++ ": " ++ jstr timeString
         , "}"
         ]
@@ -1079,7 +1180,6 @@ main = do
 
   -- テスト問題に対して証明探索を実行（クエリと証明木も保存）
   let maxTestCases = 50  -- 最大テストケース数
-      timeLimits = [30000, 60000, 90000]
 
   -- Reuse the very test cases of the run being reused, otherwise the
   -- freshly shuffled split would not be comparable with it.
@@ -1098,30 +1198,38 @@ main = do
   B.writeFile testCasesFileName (encode testCases)
   putStrLn $ "Test cases saved to: " ++ testCasesFileName
 
+  let newNeuralWani = buildNeuralWani device loadedModel loadedWordMap biDirectional topK delimiterToken
+  putStrLn $ "NeuralWani cache scope: " ++ showCacheScope cacheScope
+
   forM_ timeLimits $ \timeLimit -> do
     putStrLn ""
     putStrLn $ "--- Time limit: " ++ show timeLimit ++ " ms ---"
     
     -- 各時間制限ごとに新しいNeuralWani関数を構築（キャッシュをリセット）
-    putStrLn "Building fresh NeuralWani function (with empty cache)..."
-    let neuralWaniFunc = buildNeuralWani device loadedModel loadedWordMap biDirectional topK delimiterToken
+    timeLimitNeuralWani <- newNeuralWani
 
     let proverConfig = ProverConfig
           { cfgMaxDepth = maxDepth
           , cfgMaxTime = timeLimit
           , cfgConcurrent = concurrency
+          , cfgCacheScope = cacheScope
+          , cfgCode = codeInfo
           }
         evalOutputDir = newFolderPath </> ("eval_T" ++ show timeLimit)
 
     createDirectoryIfMissing True newFolderPath
     createDirectoryIfMissing True evalOutputDir
     putStrLn $ "Prover config: maxDepth=" ++ show maxDepth ++ ", maxTime=" ++ show timeLimit
-    putStrLn $ "Running " ++ show (length testCases) ++ " test cases..."
+    -- Numbers stay those of the full list: whether Normal or NeuralWani runs
+    -- first depends on them, as do the output file names.
+    let selectedCases = filter (\(_, problem) -> maybe True (jspJsemId problem `elem`) problemsOpt) (zip [1..] testCases)
+    putStrLn $ "Running " ++ show (length selectedCases) ++ " test cases..."
     putStrLn ""
 
-    evalResults <- forM (zip [1..] testCases) $ \(idx :: Int, problem) -> do
+    evalResults <- forM selectedCases $ \(idx :: Int, problem) -> do
       putStr $ "Test " ++ show idx ++ " [" ++ jspJsemId problem ++ "]... "
       let mSearchLogDir = if saveSearchLogs then Just (evalOutputDir </> "searchLogs") else Nothing
+      neuralWaniFunc <- if cacheScope == CachePerProblem then newNeuralWani else return timeLimitNeuralWani
       result <- try $ evaluateOneProblem proverConfig neuralWaniFunc evalOutputDir mSearchLogDir idx problem
       case result of
         Right (Just r) -> do

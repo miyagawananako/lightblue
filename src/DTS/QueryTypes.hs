@@ -91,12 +91,13 @@ data ProofSearchSetting = ProofSearchSetting {
   , reportMaxTime :: Bool  -- Default = False
   , reportMaxDepth :: Bool -- Defailt = False
   , oracle :: Maybe (DTTdB.ConName -> DTTdB.ConName -> Float) -- Default = Nothing
+  , enableNegativeOracle :: Bool -- Experimental, disabled by default
   , neuralWani :: Maybe (WB.Goal -> [BR.RuleLabel] -> [BR.RuleLabel]) -- Default = Nothing
   , concurrent :: Maybe Bool -- Default = Nothing (wani: concurrent unless a search log is recorded)
   } -- deriving (Eq, Show)
 
 defaultProofSearchSetting :: ProofSearchSetting
-defaultProofSearchSetting = ProofSearchSetting Nothing Nothing (Just Intuitionistic) (-1) True False False Nothing Nothing Nothing
+defaultProofSearchSetting = ProofSearchSetting Nothing Nothing (Just Intuitionistic) (-1) True False False Nothing False Nothing Nothing
 
 type Prover = DTTdB.ProofSearchQuery -> ListT IO DTTProofDiagram
 
