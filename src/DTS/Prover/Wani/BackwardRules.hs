@@ -704,6 +704,8 @@ regroupSigma for lat term =
     pairTail (A.ArrowPair _ t) = pairTail t
     pairTail t = t
     splitsIntoForwarded t = case t of
+      -- dne / efq accept only the whole `( efq  t)`, not its projections
+      A.Conclusion (DdB.Con c) | c `elem` [" dne "," efq "] -> False
       A.Conclusion (DdB.Var _) -> True
       A.Conclusion (DdB.Con _) -> True
       A.ArrowProj _ t' -> splitsIntoForwarded t'
